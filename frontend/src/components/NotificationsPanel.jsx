@@ -8,6 +8,8 @@ import {
   Radio
 } from 'lucide-react'
 
+import API from '../services/api'
+
 function NotificationsPanel() {
 
   const [alerts, setAlerts] = useState([])
@@ -17,12 +19,9 @@ function NotificationsPanel() {
     try {
 
       const response =
-        await fetch('http://localhost:5000/alerts')
+        await API.get('/alerts')
 
-      const data =
-        await response.json()
-
-      setAlerts(data)
+      setAlerts(response.data)
 
     } catch (error) {
 

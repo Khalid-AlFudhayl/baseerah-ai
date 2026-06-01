@@ -12,7 +12,7 @@ import {
 
 import { io } from 'socket.io-client'
 
-const API_URL = 'http://localhost:5000'
+const API_URL = 'https://baseerah-ai-backend.onrender.com'
 
 function Navbar({ onLogout }) {
   const [isConnected, setIsConnected] = useState(false)

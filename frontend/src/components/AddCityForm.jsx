@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import API from '../services/api'
 
 import {
   Plus,
@@ -47,8 +48,8 @@ function AddCityForm({ refreshCities }) {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/cities')
-      const cities = await response.json()
+      const response = await API.get('/cities')
+      const cities = response.data
 
       const cityExists = cities.some((city) => {
         return String(city.city).trim().toLowerCase() ===
@@ -60,13 +61,7 @@ function AddCityForm({ refreshCities }) {
         return
       }
 
-      await fetch('http://localhost:5000/cities', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      })
+      await API.post('/cities', formData)
 
       setFormData({
         city: '',

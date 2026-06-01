@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import API from '../services/api'
 
 import {
   Database,
@@ -22,9 +23,8 @@ function CityTable() {
 
   const fetchCities = async () => {
     try {
-      const response = await fetch('http://localhost:5000/cities')
-      const data = await response.json()
-      setCities(data)
+      const response = await API.get('/cities')
+      setCities(response.data)
     } catch (error) {
       console.log(error)
     }
@@ -44,9 +44,7 @@ function CityTable() {
     const confirmDelete = confirm('هل أنت متأكد من حذف المنطقة؟')
     if (!confirmDelete) return
 
-    await fetch(`http://localhost:5000/cities/${id}`, {
-      method: 'DELETE'
-    })
+    await API.delete(`/cities/${id}`)
 
     fetchCities()
   }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import API from '../services/api'
 
 import {
   Activity,
@@ -14,10 +15,11 @@ function ActivityPanel() {
   const [activities, setActivities] = useState([])
 
   const generateActivities = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/cities')
-      const cities = await response.json()
-      const generatedActivities = []
+   try {
+  const response = await API.get('/cities')
+  const cities = response.data
+
+  const generatedActivities = []
 
       cities.forEach((city) => {
         const traffic = Number(String(city.traffic).replace('%', ''))

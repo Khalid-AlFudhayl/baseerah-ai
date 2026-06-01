@@ -18,7 +18,9 @@ import AIAssistant from './components/AIAssistant'
 import Login from './pages/Login'
 import Settings from './pages/Settings'
 
-const socket = io('http://localhost:5000')
+import API from './services/api'
+
+const socket = io('https://baseerah-ai-backend.onrender.com')
 
 function DashboardPage({ stats, chartData }) {
   return (
@@ -210,8 +212,8 @@ function App() {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch('http://localhost:5000/cities')
-      const cities = await response.json()
+      const response = await API.get('/cities')
+      const cities = response.data
 
       updateDashboardFromCities(cities)
     } catch (error) {

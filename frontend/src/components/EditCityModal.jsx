@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import API from '../services/api'
 
 import {
   X,
@@ -34,13 +35,7 @@ function EditCityModal({ city, closeModal, refreshCities }) {
     e.preventDefault()
 
     try {
-      await fetch(`http://localhost:5000/cities/${city.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      })
+     await API.put(`/cities/${city.id}`, formData)
 
       refreshCities()
       closeModal()

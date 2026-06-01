@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import API from '../services/api'
 
 import {
   MapContainer,
@@ -51,9 +52,8 @@ function SmartCityMap() {
 
   const fetchCities = async () => {
     try {
-      const response = await fetch('http://localhost:5000/cities')
-      const data = await response.json()
-      setCities(data)
+      const response = await API.get('/cities')
+      setCities(response.data)
     } catch (error) {
       console.log(error)
     }

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import API from '../services/api'
 
 import {
   BrainCircuit,
@@ -44,22 +45,11 @@ function AIAssistant() {
 
     try {
 
-      const response = await fetch(
-        'http://localhost:5000/ai',
-        {
-          method: 'POST',
+      const response = await API.post('/ai', {
+  message: currentInput
+})
 
-          headers: {
-            'Content-Type': 'application/json'
-          },
-
-          body: JSON.stringify({
-            message: currentInput
-          })
-        }
-      )
-
-      const data = await response.json()
+const data = response.data
 
       const aiMessage = {
         sender: 'ai',
