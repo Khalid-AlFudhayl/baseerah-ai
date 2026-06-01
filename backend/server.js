@@ -27,13 +27,20 @@ const io = new Server(server, {
 app.use(cors())
 app.use(express.json())
 
-const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'baseerah_ai',
-  password: process.env.DB_PASSWORD || '123456',
-  port: Number(process.env.DB_PORT) || 5432,
-})
+const pool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false,
+      },
+    })
+  : new Pool({
+      user: process.env.DB_USER || 'postgres',
+      host: process.env.DB_HOST || 'localhost',
+      database: process.env.DB_NAME || 'baseerah_ai',
+      password: process.env.DB_PASSWORD || '123456',
+      port: Number(process.env.DB_PORT) || 5432,
+    })
 
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -682,10 +689,10 @@ const startServer = async () => {
     })
 
     setInterval(updateRandomCityData, 30000)
-  } catch (error) {
-    console.log('Server startup error:', error.message)
-    console.log('تأكد من إعدادات PostgreSQL داخل ملف backend/.env')
-  }
+ } catch (error) {
+  console.error('Server startup error full:', error)
+  process.exit(1)
+}
 }
 
 startServer()
