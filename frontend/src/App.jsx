@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 
 import Sidebar from './components/Sidebar'
@@ -124,15 +124,46 @@ function AIPage() {
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
   const [stats, setStats] = useState([])
   const [chartData, setChartData] = useState([])
 
-  useEffect(() => {
-    const loginStatus = localStorage.getItem('isLoggedIn')
+  const clearAuthData = () => {
+    localStorage.removeItem('isLoggedIn')
+    localStorage.removeItem('baseerah_token')
+    localStorage.removeItem('baseerah_user')
+  }
 
-    if (loginStatus === 'true') {
-      setIsLoggedIn(true)
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('baseerah_token')
+
+      if (!token) {
+        clearAuthData()
+        setIsLoggedIn(false)
+        setAuthLoading(false)
+        return
+      }
+
+      try {
+        await API.get('/auth/me', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+
+        localStorage.setItem('isLoggedIn', 'true')
+        setIsLoggedIn(true)
+      } catch (error) {
+        console.log('Auth check error:', error)
+        clearAuthData()
+        setIsLoggedIn(false)
+      } finally {
+        setAuthLoading(false)
+      }
     }
+
+    checkAuth()
   }, [])
 
   const getNumber = (value) => {
@@ -222,6 +253,8 @@ function App() {
   }
 
   useEffect(() => {
+    if (!isLoggedIn) return
+
     fetchDashboardData()
 
     socket.on('cities:update', (cities) => {
@@ -231,16 +264,47 @@ function App() {
     return () => {
       socket.off('cities:update')
     }
-  }, [])
+  }, [isLoggedIn])
+
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true)
+  }
 
   const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn')
+    clearAuthData()
     setIsLoggedIn(false)
+  }
+
+  if (authLoading) {
+    return (
+      <div className="
+        min-h-screen
+        bg-[#050B14]
+        text-cyan-300
+        flex
+        items-center
+        justify-center
+        text-xl
+        font-bold
+      ">
+        جاري التحقق من الجلسة...
+      </div>
+    )
   }
 
   if (!isLoggedIn) {
     return (
-      <Login onLogin={() => setIsLoggedIn(true)} />
+      <Routes>
+        <Route
+          path="/login"
+          element={<Login onLogin={handleLoginSuccess} />}
+        />
+
+        <Route
+          path="*"
+          element={<Navigate to="/login" replace />}
+        />
+      </Routes>
     )
   }
 
@@ -309,6 +373,10 @@ function App() {
             <Route path="/ai" element={<AIPage />} />
 
             <Route path="/settings" element={<Settings />} />
+
+            <Route path="/login" element={<Navigate to="/" replace />} />
+
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>
