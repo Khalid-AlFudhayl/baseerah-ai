@@ -106,6 +106,21 @@ const getCities = async () => {
   return result.rows
 }
 
+const getDashboardStats = async () => {
+  const result = await pool.query(`
+    SELECT
+      ROUND(AVG(CAST(REPLACE(air, '%', '') AS NUMERIC))) AS air_quality,
+      ROUND(AVG(CAST(REPLACE(traffic, '%', '') AS NUMERIC))) AS traffic,
+      ROUND(AVG(CAST(REPLACE(energy, '%', '') AS NUMERIC))) AS energy,
+      ROUND(AVG(CAST(REPLACE(water, '%', '') AS NUMERIC))) AS water,
+      ROUND(AVG(CAST(REPLACE(security, '%', '') AS NUMERIC))) AS security,
+      COUNT(*) AS total_cities
+    FROM cities
+  `)
+
+  return result.rows[0]
+}
+
 const emitLiveData = async () => {
   try {
     const cities = await getCities()
@@ -246,18 +261,18 @@ const buildLocalAIReply = (message, cities) => {
     return cityName && userMessage.includes(cityName)
   })
 
-if (matchedZone) {
-  const traffic = getNumber(matchedZone.traffic)
+  if (matchedZone) {
+    const traffic = getNumber(matchedZone.traffic)
 
-  let statusText = 'المؤشرات الحالية ضمن النطاق الطبيعي ولا توجد تنبيهات حرجة.'
+    let statusText = 'المؤشرات الحالية ضمن النطاق الطبيعي ولا توجد تنبيهات حرجة.'
 
-  if (traffic >= 80) {
-    statusText = 'يوجد ازدحام مروري مرتفع، ويوصى بمتابعة المنطقة خلال ساعات الذروة.'
-  } else if (traffic >= 65) {
-    statusText = 'الحركة المرورية نشطة لكنها ما زالت تحت السيطرة.'
-  }
+    if (traffic >= 80) {
+      statusText = 'يوجد ازدحام مروري مرتفع، ويوصى بمتابعة المنطقة خلال ساعات الذروة.'
+    } else if (traffic >= 65) {
+      statusText = 'الحركة المرورية نشطة لكنها ما زالت تحت السيطرة.'
+    }
 
-  return `
+    return `
 📍 ${matchedZone.city}
 
 الحالة العامة: ${matchedZone.status}
@@ -271,7 +286,7 @@ if (matchedZone) {
 التقييم:
 ${statusText}
 `
-}
+  }
 
   if (
     userMessage.includes('مرور') ||
@@ -394,6 +409,32 @@ app.get('/cities', async (req, res) => {
   } catch (error) {
     console.log('GET /cities error:', error.message)
     res.status(500).json([])
+  }
+})
+
+app.get('/dashboard-stats', async (req, res) => {
+  try {
+    const stats = await getDashboardStats()
+
+    res.json({
+      airQuality: String(stats.air_quality || 0),
+      traffic: `${stats.traffic || 0}%`,
+      energy: `${stats.energy || 0}%`,
+      water: `${stats.water || 0}%`,
+      security: `${stats.security || 0}%`,
+      totalCities: Number(stats.total_cities || 0),
+    })
+  } catch (error) {
+    console.log('GET /dashboard-stats error:', error.message)
+
+    res.status(500).json({
+      airQuality: '0',
+      traffic: '0%',
+      energy: '0%',
+      water: '0%',
+      security: '0%',
+      totalCities: 0,
+    })
   }
 })
 
@@ -689,10 +730,10 @@ const startServer = async () => {
     })
 
     setInterval(updateRandomCityData, 30000)
- } catch (error) {
-  console.error('Server startup error full:', error)
-  process.exit(1)
-}
+  } catch (error) {
+    console.error('Server startup error full:', error)
+    process.exit(1)
+  }
 }
 
 startServer()
