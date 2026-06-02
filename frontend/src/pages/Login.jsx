@@ -1,30 +1,55 @@
 import { useState } from 'react'
 import logo from '../assets/baseerah-logo.png'
+import API from '../services/api'
 
 import {
   LockKeyhole,
   Mail,
   ShieldCheck,
   Radio,
-  Sparkles
+  Sparkles,
+  LoaderCircle
 } from 'lucide-react'
 
 function Login({ onLogin }) {
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('admin@baseerah.ai')
+  const [password, setPassword] = useState('123456')
+  const [loading, setLoading] = useState(false)
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault()
 
-    if (
-      email === 'admin@baseerah.ai' &&
-      password === '123456'
-    ) {
+    if (!email.trim() || !password.trim()) {
+      alert('يرجى إدخال البريد الإلكتروني وكلمة المرور')
+      return
+    }
+
+    try {
+      setLoading(true)
+
+      const response = await API.post('/auth/login', {
+        email,
+        password,
+      })
+
+      const { token, user } = response.data
+
+      if (!token) {
+        alert('لم يتم استلام رمز الدخول')
+        return
+      }
+
       localStorage.setItem('isLoggedIn', 'true')
+      localStorage.setItem('baseerah_token', token)
+      localStorage.setItem('baseerah_user', JSON.stringify(user))
+
       onLogin()
-    } else {
+    } catch (error) {
+      console.log(error)
       alert('بيانات الدخول غير صحيحة')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -304,6 +329,7 @@ function Login({ onLogin }) {
 
               <button
                 type="submit"
+                disabled={loading}
                 className="
                   w-full
                   bg-cyan-400
@@ -318,10 +344,21 @@ function Login({ onLogin }) {
                   items-center
                   justify-center
                   gap-2
+                  disabled:opacity-60
+                  disabled:cursor-not-allowed
                 "
               >
-                <ShieldCheck size={18} />
-                تسجيل الدخول
+                {loading ? (
+                  <>
+                    <LoaderCircle size={18} className="animate-spin" />
+                    جاري التحقق...
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck size={18} />
+                    تسجيل الدخول
+                  </>
+                )}
               </button>
 
             </form>
@@ -354,7 +391,7 @@ function Login({ onLogin }) {
 
                 <div>
                   <p className="text-gray-400 text-sm">
-                    Demo Access
+                    Admin Access
                   </p>
 
                   <p className="text-cyan-300 text-sm mt-1">

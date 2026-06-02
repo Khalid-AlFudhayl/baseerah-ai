@@ -16,22 +16,22 @@ function Dashboard() {
     {
       title: 'جودة الهواء',
       value: '0',
-      color: 'cyan',
+      color: 'text-cyan-300',
     },
     {
       title: 'حركة المرور',
       value: '0%',
-      color: 'orange',
+      color: 'text-orange-300',
     },
     {
       title: 'الطاقة',
       value: '0%',
-      color: 'yellow',
+      color: 'text-yellow-300',
     },
     {
       title: 'السلامة',
       value: '0%',
-      color: 'green',
+      color: 'text-green-300',
     },
   ])
 
@@ -40,54 +40,40 @@ function Dashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const res = await API.get('/cities')
-        const cities = res.data
-
-        if (!cities || cities.length === 0) return
-
-        const average = (key) => {
-          const total = cities.reduce((sum, city) => {
-            const rawValue = city[key]
-
-            const numberValue =
-              typeof rawValue === 'string'
-                ? Number(rawValue.replace('%', ''))
-                : Number(rawValue)
-
-            return sum + numberValue
-          }, 0)
-
-          return Math.round(total / cities.length)
-        }
+        const statsResponse = await API.get('/dashboard-stats')
+        const stats = statsResponse.data
 
         setCityStats([
           {
             title: 'جودة الهواء',
-            value: String(average('air')),
-            color: 'cyan',
+            value: stats.airQuality || '0',
+            color: 'text-cyan-300',
           },
           {
             title: 'حركة المرور',
-            value: `${average('traffic')}%`,
-            color: 'orange',
+            value: stats.traffic || '0%',
+            color: 'text-orange-300',
           },
           {
             title: 'الطاقة',
-            value: `${average('energy')}%`,
-            color: 'yellow',
+            value: stats.energy || '0%',
+            color: 'text-yellow-300',
           },
           {
             title: 'السلامة',
-            value: `${average('security')}%`,
-            color: 'green',
+            value: stats.security || '0%',
+            color: 'text-green-300',
           },
         ])
+
+        const citiesResponse = await API.get('/cities')
+        const cities = citiesResponse.data
 
         setChartData(
           cities.map((city) => ({
             name: city.city,
-            traffic: Number(String(city.traffic).replace('%', '')),
-            air: Number(city.air),
+            traffic: Number(String(city.traffic).replace('%', '')) || 0,
+            air: Number(city.air) || 0,
           }))
         )
       } catch (error) {
@@ -96,6 +82,12 @@ function Dashboard() {
     }
 
     fetchDashboardData()
+
+    const interval = setInterval(() => {
+      fetchDashboardData()
+    }, 30000)
+
+    return () => clearInterval(interval)
   }, [])
 
   return (
