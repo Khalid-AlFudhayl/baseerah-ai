@@ -48,7 +48,7 @@ const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null
 
-  const JWT_SECRET =
+const JWT_SECRET =
   process.env.JWT_SECRET || 'baseerah_ai_super_secret_2026'
 
 const authMiddleware = (req, res, next) => {
@@ -70,6 +70,21 @@ const authMiddleware = (req, res, next) => {
     return res.status(401).json({
       error: 'Invalid token',
     })
+  }
+}
+
+const addActivityLog = async (userName, action) => {
+  try {
+    await pool.query(
+      `
+      INSERT INTO activity_logs
+      (user_name, action)
+      VALUES ($1, $2)
+      `,
+      [userName || 'System User', action]
+    )
+  } catch (error) {
+    console.log('Activity log error:', error.message)
   }
 }
 
@@ -315,93 +330,6 @@ ${statusText}
 `
   }
 
-  if (
-    userMessage.includes('مرور') ||
-    userMessage.includes('زحام') ||
-    userMessage.includes('ازدحام') ||
-    userMessage.includes('طريق')
-  ) {
-    return `
-بحسب بيانات بصيرة الحالية:
-
-أكثر منطقة تحتاج متابعة مرورية هي ${highestTraffic.city}
-بنسبة مرور ${highestTraffic.traffic}.
-
-متوسط الحركة المرورية في جميع المناطق:
-${avg('traffic')}%.
-
-التوصية:
-يفضل مراقبة المناطق ذات المؤشر الأعلى خلال أوقات الذروة.
-`
-  }
-
-  if (
-    userMessage.includes('هواء') ||
-    userMessage.includes('جودة') ||
-    userMessage.includes('الهواء')
-  ) {
-    return `
-تحليل جودة الهواء الحالي:
-
-أفضل جودة هواء حاليًا في ${bestAir.city}
-بمؤشر ${bestAir.air}.
-
-متوسط جودة الهواء العام:
-${avg('air')}.
-`
-  }
-
-  if (
-    userMessage.includes('طاقة') ||
-    userMessage.includes('طاقه') ||
-    userMessage.includes('كهرب')
-  ) {
-    return `
-تحليل استهلاك الطاقة:
-
-أعلى استهلاك للطاقة حاليًا في ${highestEnergy.city}
-بنسبة ${highestEnergy.energy}.
-
-متوسط استهلاك الطاقة:
-${avg('energy')}%.
-
-التوصية:
-يفضل مراقبة المناطق الأعلى استهلاكًا لتقليل الضغط التشغيلي.
-`
-  }
-
-  if (
-    userMessage.includes('مياه') ||
-    userMessage.includes('المياه')
-  ) {
-    return `
-تحليل استهلاك المياه:
-
-أعلى استهلاك للمياه حاليًا في ${highestWater.city}
-بنسبة ${highestWater.water}.
-
-متوسط استهلاك المياه:
-${avg('water')}%.
-`
-  }
-
-  if (
-    userMessage.includes('امان') ||
-    userMessage.includes('أمان') ||
-    userMessage.includes('سلامة') ||
-    userMessage.includes('السلامة')
-  ) {
-    return `
-تحليل السلامة العامة:
-
-أفضل مؤشر أمان حاليًا في ${bestSecurity.city}
-بنسبة ${bestSecurity.security}.
-
-متوسط مستوى الأمان:
-${avg('security')}%.
-`
-  }
-
   return `
 تحليل بصيرة الحالي:
 
@@ -455,6 +383,11 @@ app.post('/auth/register', async (req, res) => {
       ]
     )
 
+    await addActivityLog(
+      full_name,
+      `REGISTER_USER: ${email}`
+    )
+
     res.status(201).json(result.rows[0])
   } catch (error) {
     console.log('POST /auth/register error:', error.message)
@@ -504,6 +437,11 @@ app.post('/auth/login', async (req, res) => {
       {
         expiresIn: '7d',
       }
+    )
+
+    await addActivityLog(
+      user.full_name,
+      'LOGIN'
     )
 
     res.json({
@@ -577,6 +515,11 @@ app.post('/register-push-token', async (req, res) => {
 
     addPushToken(token)
 
+    await addActivityLog(
+      'System User',
+      'REGISTER_PUSH_TOKEN'
+    )
+
     res.json({
       success: true,
     })
@@ -620,6 +563,11 @@ app.post('/cities', async (req, res) => {
     )
 
     await emitLiveData()
+
+    await addActivityLog(
+      'System User',
+      `ADD_CITY: ${city}`
+    )
 
     res.status(201).json(result.rows[0])
   } catch (error) {
@@ -670,6 +618,11 @@ app.put('/cities/:id', async (req, res) => {
 
     await emitLiveData()
 
+    await addActivityLog(
+      'System User',
+      `UPDATE_CITY: ${city}`
+    )
+
     res.json(result.rows[0])
   } catch (error) {
     console.log('PUT /cities error:', error.message)
@@ -687,6 +640,11 @@ app.delete('/cities/:id', async (req, res) => {
     )
 
     await emitLiveData()
+
+    await addActivityLog(
+      'System User',
+      `DELETE_CITY_ID: ${id}`
+    )
 
     res.json({ message: 'City deleted successfully' })
   } catch (error) {
@@ -781,8 +739,15 @@ app.post('/ai', async (req, res) => {
     }
 
     if (!openai) {
+      const reply = buildLocalAIReply(message, cities)
+
+      await addActivityLog(
+        'System User',
+        'AI_REQUEST'
+      )
+
       return res.json({
-        reply: buildLocalAIReply(message, cities),
+        reply,
       })
     }
 
@@ -810,6 +775,11 @@ ${message}
       completion.output_text ||
       buildLocalAIReply(message, cities)
 
+    await addActivityLog(
+      'System User',
+      'AI_REQUEST'
+    )
+
     res.json({ reply })
   } catch (error) {
     console.log('POST /ai error:', error.message)
@@ -821,9 +791,15 @@ ${message}
         ''
 
       const cities = await getCities()
+      const reply = buildLocalAIReply(message, cities)
+
+      await addActivityLog(
+        'System User',
+        'AI_REQUEST_FALLBACK'
+      )
 
       return res.json({
-        reply: buildLocalAIReply(message, cities),
+        reply,
       })
     } catch {
       return res.status(500).json({
@@ -846,6 +822,23 @@ io.on('connection', async (socket) => {
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id)
   })
+})
+
+app.get('/activity-logs', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT *
+      FROM activity_logs
+      ORDER BY id DESC
+      LIMIT 100
+    `)
+
+    res.json(result.rows)
+  } catch (error) {
+    console.log(error)
+
+    res.status(500).json([])
+  }
 })
 
 const startServer = async () => {

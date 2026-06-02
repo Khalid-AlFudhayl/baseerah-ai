@@ -13,15 +13,27 @@ import {
 } from 'lucide-react'
 
 function Sidebar() {
+  const user = JSON.parse(
+    localStorage.getItem('baseerah_user') || '{}'
+  )
+
+  const role = user.role || 'viewer'
 
   const navLinks = [
     { to: '/', label: 'الرئيسية', icon: <LayoutDashboard size={18} /> },
     { to: '/cities', label: 'المدن والمناطق', icon: <MapPinned size={18} /> },
     { to: '/analytics', label: 'البيانات والتحليلات', icon: <ChartSpline size={18} /> },
     { to: '/alerts', label: 'التنبيهات', icon: <BellRing size={18} /> },
-    { to: '/ai', label: 'المساعد الذكي', icon: <BrainCircuit size={18} /> },
-    { to: '/settings', label: 'الإعدادات', icon: <Settings size={18} /> }
+    { to: '/ai', label: 'المساعد الذكي', icon: <BrainCircuit size={18} /> }
   ]
+
+  if (role === 'admin') {
+    navLinks.push({
+      to: '/settings',
+      label: 'الإعدادات',
+      icon: <Settings size={18} />
+    })
+  }
 
   return (
     <aside className="
@@ -213,11 +225,15 @@ function Sidebar() {
             <div>
 
               <h3 className="text-white font-black">
-                خالد ال فضيل
+                {user.full_name || 'Unknown User'}
               </h3>
 
               <p className="text-gray-400 text-sm mt-1">
-                مدير النظام
+                {role === 'admin'
+                  ? 'مدير النظام'
+                  : role === 'manager'
+                    ? 'مشرف'
+                    : 'مستخدم عرض'}
               </p>
 
             </div>
