@@ -124,6 +124,7 @@ function AIPage() {
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [stats, setStats] = useState([])
   const [chartData, setChartData] = useState([])
@@ -140,23 +141,32 @@ function App() {
 
       if (!token) {
         clearAuthData()
+        setCurrentUser(null)
         setIsLoggedIn(false)
         setAuthLoading(false)
         return
       }
 
       try {
-        await API.get('/auth/me', {
+        const response = await API.get('/auth/me', {
           headers: {
             Authorization: `Bearer ${token}`
           }
         })
 
+        const user =
+          response.data.user ||
+          JSON.parse(localStorage.getItem('baseerah_user') || '{}')
+
         localStorage.setItem('isLoggedIn', 'true')
+        localStorage.setItem('baseerah_user', JSON.stringify(user))
+
+        setCurrentUser(user)
         setIsLoggedIn(true)
       } catch (error) {
         console.log('Auth check error:', error)
         clearAuthData()
+        setCurrentUser(null)
         setIsLoggedIn(false)
       } finally {
         setAuthLoading(false)
@@ -267,11 +277,17 @@ function App() {
   }, [isLoggedIn])
 
   const handleLoginSuccess = () => {
+    const user = JSON.parse(
+      localStorage.getItem('baseerah_user') || '{}'
+    )
+
+    setCurrentUser(user)
     setIsLoggedIn(true)
   }
 
   const handleLogout = () => {
     clearAuthData()
+    setCurrentUser(null)
     setIsLoggedIn(false)
   }
 
@@ -338,7 +354,7 @@ function App() {
       "></div>
 
       <div className="relative z-10 flex w-full">
-        <Sidebar />
+        <Sidebar currentUser={currentUser} />
 
         <main className="
           flex-1
@@ -372,7 +388,9 @@ function App() {
 
             <Route path="/ai" element={<AIPage />} />
 
-            <Route path="/settings" element={<Settings />} />
+            {currentUser?.role === 'admin' && (
+              <Route path="/settings" element={<Settings />} />
+            )}
 
             <Route path="/login" element={<Navigate to="/" replace />} />
 

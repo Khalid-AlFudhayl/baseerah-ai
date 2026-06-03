@@ -4,9 +4,13 @@ import API from '../services/api'
 import {
   Activity,
   Car,
-  Wind,
+  BrainCircuit,
   CheckCircle2,
   AlertTriangle,
+  Trash2,
+  PlusCircle,
+  Pencil,
+  LogIn,
   Radio
 } from 'lucide-react'
 
@@ -15,55 +19,58 @@ function ActivityPanel() {
   const [activities, setActivities] = useState([])
 
   const generateActivities = async () => {
-   try {
-  const response = await API.get('/cities')
-  const cities = response.data
+    try {
+      const response = await API.get('/activity-logs')
+      const logs = response.data || []
 
-  const generatedActivities = []
+      const generatedActivities = logs.map((log) => {
+        let title = 'نشاط بالنظام'
+        let type = 'info'
+        let iconType = 'default'
 
-      cities.forEach((city) => {
-        const traffic = Number(String(city.traffic).replace('%', ''))
-        const air = Number(city.air)
-
-        if (traffic >= 80) {
-          generatedActivities.push({
-            title: 'ازدحام مروري مرتفع',
-            description: `${city.city} تسجل حركة مرور بنسبة ${city.traffic}`,
-            time: 'الآن',
-            type: 'critical'
-          })
+        if (log.action.includes('LOGIN')) {
+          title = 'تسجيل دخول'
+          type = 'success'
+          iconType = 'login'
         }
 
-        else if (traffic >= 65) {
-          generatedActivities.push({
-            title: 'نشاط مروري متزايد',
-            description: `${city.city} تشهد ارتفاعًا متوسطًا في الحركة`,
-            time: 'قبل دقائق',
-            type: 'warning'
-          })
+        else if (log.action.includes('ADD_CITY')) {
+          title = 'إضافة منطقة'
+          type = 'success'
+          iconType = 'add'
         }
 
-        if (air >= 50) {
-          generatedActivities.push({
-            title: 'متابعة جودة الهواء',
-            description: `تم تسجيل مؤشر ${city.air} في ${city.city}`,
-            time: 'الآن',
-            type: 'info'
-          })
+        else if (log.action.includes('UPDATE_CITY')) {
+          title = 'تحديث بيانات منطقة'
+          type = 'warning'
+          iconType = 'update'
         }
 
-        if (city.status === 'مستقر') {
-          generatedActivities.push({
-            title: 'استقرار تشغيلي',
-            description: `الأنظمة تعمل بشكل طبيعي في ${city.city}`,
-            time: 'قبل قليل',
-            type: 'success'
-          })
+        else if (log.action.includes('DELETE_CITY')) {
+          title = 'حذف منطقة'
+          type = 'critical'
+          iconType = 'delete'
+        }
+
+        else if (log.action.includes('AI_REQUEST')) {
+          title = 'طلب ذكاء اصطناعي'
+          type = 'info'
+          iconType = 'ai'
+        }
+
+        return {
+          title,
+          description: `${log.user_name} - ${log.action}`,
+          time: new Date(log.created_at).toLocaleTimeString('ar-SA', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          type,
+          iconType
         }
       })
 
       setActivities(generatedActivities.slice(0, 8))
-
     } catch (error) {
       console.log(error)
     }
@@ -80,75 +87,34 @@ function ActivityPanel() {
   }, [])
 
   const getIcon = (activity) => {
-    const text = `${activity.title} ${activity.description}`
-
-    if (
-      text.includes('مرور') ||
-      text.includes('مروري') ||
-      text.includes('حركة')
-    ) {
-      return <Car size={18} />
-    }
-
-    if (
-      text.includes('هواء') ||
-      text.includes('جودة')
-    ) {
-      return <Wind size={18} />
-    }
-
-    if (
-      text.includes('استقرار') ||
-      text.includes('الأنظمة') ||
-      text.includes('طبيعي')
-    ) {
-      return <CheckCircle2 size={18} />
-    }
-
-    return <AlertTriangle size={18} />
+    if (activity.iconType === 'login') return <LogIn size={18} />
+    if (activity.iconType === 'add') return <PlusCircle size={18} />
+    if (activity.iconType === 'update') return <Pencil size={18} />
+    if (activity.iconType === 'delete') return <Trash2 size={18} />
+    if (activity.iconType === 'ai') return <BrainCircuit size={18} />
+    if (activity.type === 'success') return <CheckCircle2 size={18} />
+    if (activity.type === 'critical') return <AlertTriangle size={18} />
+    return <Car size={18} />
   }
 
   const getStyle = (activity) => {
-    const text = `${activity.title} ${activity.description}`
-
-    if (
-      text.includes('مرور') ||
-      text.includes('مروري') ||
-      text.includes('حركة')
-    ) {
-      return {
-        iconBox: 'bg-orange-500/10 border-orange-400/20 text-orange-300',
-        border: 'border-orange-400/15',
-        glow: 'rgba(255,138,0,0.10)',
-        dot: 'bg-orange-400',
-        badge: 'bg-orange-500/10 border-orange-400/20 text-orange-300'
-      }
-    }
-
-    if (
-      text.includes('هواء') ||
-      text.includes('جودة')
-    ) {
-      return {
-        iconBox: 'bg-cyan-500/10 border-cyan-400/20 text-cyan-300',
-        border: 'border-cyan-400/15',
-        glow: 'rgba(0,230,255,0.10)',
-        dot: 'bg-cyan-400',
-        badge: 'bg-cyan-500/10 border-cyan-400/20 text-cyan-300'
-      }
-    }
-
-    if (
-      text.includes('استقرار') ||
-      text.includes('الأنظمة') ||
-      text.includes('طبيعي')
-    ) {
+    if (activity.type === 'success') {
       return {
         iconBox: 'bg-green-500/10 border-green-400/20 text-green-300',
         border: 'border-green-400/15',
         glow: 'rgba(0,200,150,0.10)',
         dot: 'bg-green-400',
         badge: 'bg-green-500/10 border-green-400/20 text-green-300'
+      }
+    }
+
+    if (activity.type === 'warning') {
+      return {
+        iconBox: 'bg-orange-500/10 border-orange-400/20 text-orange-300',
+        border: 'border-orange-400/15',
+        glow: 'rgba(255,138,0,0.10)',
+        dot: 'bg-orange-400',
+        badge: 'bg-orange-500/10 border-orange-400/20 text-orange-300'
       }
     }
 
@@ -188,7 +154,7 @@ function ActivityPanel() {
 
             <div>
               <h2 className="text-xl font-black">النشاطات</h2>
-              <p className="text-gray-400 text-sm mt-1">تحديثات تشغيلية لحظية</p>
+              <p className="text-gray-400 text-sm mt-1">سجل العمليات من قاعدة البيانات</p>
             </div>
           </div>
 
@@ -213,7 +179,7 @@ function ActivityPanel() {
           {activities.length === 0 ? (
 
             <div className="bg-[#08111F]/85 p-4 rounded-2xl border border-cyan-500/10">
-              <p className="text-cyan-300 text-sm">جاري تحليل النشاطات...</p>
+              <p className="text-cyan-300 text-sm">لا توجد نشاطات مسجلة حتى الآن...</p>
             </div>
 
           ) : (

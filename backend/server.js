@@ -73,6 +73,22 @@ const authMiddleware = (req, res, next) => {
   }
 }
 
+const allowRoles = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({
+        error: 'Forbidden: insufficient permissions',
+      })
+    }
+
+    next()
+  }
+}
+
+const getUserNameFromRequest = (req) => {
+  return req.user?.full_name || 'System User'
+}
+
 const addActivityLog = async (userName, action) => {
   try {
     await pool.query(
@@ -532,26 +548,13 @@ app.post('/register-push-token', async (req, res) => {
   }
 })
 
-app.post('/cities', async (req, res) => {
-  try {
-    const {
-      city,
-      traffic,
-      air,
-      energy,
-      water,
-      security,
-      status,
-    } = req.body
-
-    const result = await pool.query(
-      `
-      INSERT INTO cities
-      (city, traffic, air, energy, water, security, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
-      `,
-      [
+app.post(
+  '/cities',
+  authMiddleware,
+  allowRoles('admin', 'manager'),
+  async (req, res) => {
+    try {
+      const {
         city,
         traffic,
         air,
@@ -559,52 +562,50 @@ app.post('/cities', async (req, res) => {
         water,
         security,
         status,
-      ]
-    )
+      } = req.body
 
-    await emitLiveData()
+      const result = await pool.query(
+        `
+        INSERT INTO cities
+        (city, traffic, air, energy, water, security, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *
+        `,
+        [
+          city,
+          traffic,
+          air,
+          energy,
+          water,
+          security,
+          status,
+        ]
+      )
 
-    await addActivityLog(
-      'System User',
-      `ADD_CITY: ${city}`
-    )
+      await emitLiveData()
 
-    res.status(201).json(result.rows[0])
-  } catch (error) {
-    console.log('POST /cities error:', error.message)
-    res.status(500).json({ error: 'Failed to add city' })
+      await addActivityLog(
+        getUserNameFromRequest(req),
+        `ADD_CITY: ${city}`
+      )
+
+      res.status(201).json(result.rows[0])
+    } catch (error) {
+      console.log('POST /cities error:', error.message)
+      res.status(500).json({ error: 'Failed to add city' })
+    }
   }
-})
+)
 
-app.put('/cities/:id', async (req, res) => {
-  try {
-    const { id } = req.params
+app.put(
+  '/cities/:id',
+  authMiddleware,
+  allowRoles('admin', 'manager'),
+  async (req, res) => {
+    try {
+      const { id } = req.params
 
-    const {
-      city,
-      traffic,
-      air,
-      energy,
-      water,
-      security,
-      status,
-    } = req.body
-
-    const result = await pool.query(
-      `
-      UPDATE cities
-      SET
-        city = $1,
-        traffic = $2,
-        air = $3,
-        energy = $4,
-        water = $5,
-        security = $6,
-        status = $7
-      WHERE id = $8
-      RETURNING *
-      `,
-      [
+      const {
         city,
         traffic,
         air,
@@ -612,46 +613,76 @@ app.put('/cities/:id', async (req, res) => {
         water,
         security,
         status,
-        id,
-      ]
-    )
+      } = req.body
 
-    await emitLiveData()
+      const result = await pool.query(
+        `
+        UPDATE cities
+        SET
+          city = $1,
+          traffic = $2,
+          air = $3,
+          energy = $4,
+          water = $5,
+          security = $6,
+          status = $7
+        WHERE id = $8
+        RETURNING *
+        `,
+        [
+          city,
+          traffic,
+          air,
+          energy,
+          water,
+          security,
+          status,
+          id,
+        ]
+      )
 
-    await addActivityLog(
-      'System User',
-      `UPDATE_CITY: ${city}`
-    )
+      await emitLiveData()
 
-    res.json(result.rows[0])
-  } catch (error) {
-    console.log('PUT /cities error:', error.message)
-    res.status(500).json({ error: 'Failed to update city' })
+      await addActivityLog(
+        getUserNameFromRequest(req),
+        `UPDATE_CITY: ${city}`
+      )
+
+      res.json(result.rows[0])
+    } catch (error) {
+      console.log('PUT /cities error:', error.message)
+      res.status(500).json({ error: 'Failed to update city' })
+    }
   }
-})
+)
 
-app.delete('/cities/:id', async (req, res) => {
-  try {
-    const { id } = req.params
+app.delete(
+  '/cities/:id',
+  authMiddleware,
+  allowRoles('admin'),
+  async (req, res) => {
+    try {
+      const { id } = req.params
 
-    await pool.query(
-      'DELETE FROM cities WHERE id = $1',
-      [id]
-    )
+      await pool.query(
+        'DELETE FROM cities WHERE id = $1',
+        [id]
+      )
 
-    await emitLiveData()
+      await emitLiveData()
 
-    await addActivityLog(
-      'System User',
-      `DELETE_CITY_ID: ${id}`
-    )
+      await addActivityLog(
+        getUserNameFromRequest(req),
+        `DELETE_CITY_ID: ${id}`
+      )
 
-    res.json({ message: 'City deleted successfully' })
-  } catch (error) {
-    console.log('DELETE /cities error:', error.message)
-    res.status(500).json({ error: 'Failed to delete city' })
+      res.json({ message: 'City deleted successfully' })
+    } catch (error) {
+      console.log('DELETE /cities error:', error.message)
+      res.status(500).json({ error: 'Failed to delete city' })
+    }
   }
-})
+)
 
 app.get('/alerts', async (req, res) => {
   try {
@@ -822,6 +853,53 @@ io.on('connection', async (socket) => {
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id)
   })
+})
+
+app.get('/system-stats', async (req, res) => {
+  try {
+    const usersResult =
+      await pool.query('SELECT COUNT(*) FROM users')
+
+    const citiesResult =
+      await pool.query('SELECT COUNT(*) FROM cities')
+
+    const logsResult =
+      await pool.query('SELECT COUNT(*) FROM activity_logs')
+
+    const aiResult = await pool.query(`
+      SELECT COUNT(*) 
+      FROM activity_logs
+      WHERE action LIKE 'AI%'
+    `)
+
+    const alertsResult = await pool.query(`
+      SELECT COUNT(*) AS total
+      FROM cities
+      WHERE
+        CAST(REPLACE(traffic,'%','') AS INTEGER) >= 80
+        OR CAST(REPLACE(energy,'%','') AS INTEGER) >= 88
+        OR CAST(REPLACE(security,'%','') AS INTEGER) < 85
+    `)
+
+    res.json({
+      users: Number(usersResult.rows[0].count),
+      cities: Number(citiesResult.rows[0].count),
+      activityLogs: Number(logsResult.rows[0].count),
+      aiRequests: Number(aiResult.rows[0].count),
+      alerts: Number(alertsResult.rows[0].total),
+      updatedAt: new Date().toISOString()
+    })
+  } catch (error) {
+    console.log('GET /system-stats error:', error.message)
+
+    res.status(500).json({
+      users: 0,
+      cities: 0,
+      activityLogs: 0,
+      aiRequests: 0,
+      alerts: 0
+    })
+  }
 })
 
 app.get('/activity-logs', async (req, res) => {

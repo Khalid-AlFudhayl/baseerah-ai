@@ -10,7 +10,8 @@ import {
   Activity,
   Wind,
   Zap,
-  Droplets
+  Droplets,
+  Eye
 } from 'lucide-react'
 
 import AddCityForm from './AddCityForm'
@@ -20,6 +21,21 @@ function CityTable() {
 
   const [cities, setCities] = useState([])
   const [selectedCity, setSelectedCity] = useState(null)
+
+  const user = JSON.parse(
+    localStorage.getItem('baseerah_user') || '{}'
+  )
+
+  const role = user.role || 'viewer'
+
+  const canAddCity =
+    role === 'admin' || role === 'manager'
+
+  const canEditCity =
+    role === 'admin' || role === 'manager'
+
+  const canDeleteCity =
+    role === 'admin'
 
   const fetchCities = async () => {
     try {
@@ -41,6 +57,11 @@ function CityTable() {
   }, [])
 
   const deleteCity = async (id) => {
+    if (!canDeleteCity) {
+      alert('ليس لديك صلاحية حذف المناطق')
+      return
+    }
+
     const confirmDelete = confirm('هل أنت متأكد من حذف المنطقة؟')
     if (!confirmDelete) return
 
@@ -64,7 +85,51 @@ function CityTable() {
   return (
     <div className="space-y-6">
 
-      <AddCityForm refreshCities={fetchCities} />
+      {canAddCity && (
+        <AddCityForm refreshCities={fetchCities} />
+      )}
+
+      {!canAddCity && (
+        <div className="
+          relative
+          overflow-hidden
+          bg-[#101827]/85
+          border
+          border-cyan-500/10
+          rounded-3xl
+          p-5
+          backdrop-blur-xl
+        ">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,230,255,0.10),transparent_38%)]"></div>
+
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="
+              w-11
+              h-11
+              rounded-2xl
+              bg-cyan-500/10
+              border
+              border-cyan-400/20
+              flex
+              items-center
+              justify-center
+              text-cyan-300
+            ">
+              <Eye size={20} />
+            </div>
+
+            <div>
+              <h3 className="text-white font-black">
+                وضع المشاهدة فقط
+              </h3>
+
+              <p className="text-gray-400 text-sm mt-1">
+                حسابك يملك صلاحية عرض البيانات فقط بدون إضافة أو تعديل أو حذف.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="
         relative
@@ -102,8 +167,38 @@ function CityTable() {
 
             </div>
 
-            <div className="bg-cyan-500/10 border border-cyan-400/20 text-cyan-300 px-4 py-2 rounded-2xl text-sm">
-              {cities.length} مناطق
+            <div className="flex items-center gap-3">
+
+              <div className="
+                bg-cyan-500/10
+                border
+                border-cyan-400/20
+                text-cyan-300
+                px-4
+                py-2
+                rounded-2xl
+                text-sm
+              ">
+                {cities.length} مناطق
+              </div>
+
+              <div className="
+                bg-green-500/10
+                border
+                border-green-400/20
+                text-green-300
+                px-4
+                py-2
+                rounded-2xl
+                text-sm
+              ">
+                {role === 'admin'
+                  ? 'Admin'
+                  : role === 'manager'
+                    ? 'Manager'
+                    : 'Viewer'}
+              </div>
+
             </div>
 
           </div>
@@ -234,19 +329,43 @@ function CityTable() {
                     <td className="py-5">
                       <div className="flex items-center justify-center gap-2">
 
-                        <button
-                          onClick={() => setSelectedCity(city)}
-                          className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-400/20 text-cyan-300 flex items-center justify-center transition hover:bg-cyan-500/20"
-                        >
-                          <Pencil size={15} />
-                        </button>
+                        {canEditCity && (
+                          <button
+                            onClick={() => setSelectedCity(city)}
+                            className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-400/20 text-cyan-300 flex items-center justify-center transition hover:bg-cyan-500/20"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                        )}
 
-                        <button
-                          onClick={() => deleteCity(city.id)}
-                          className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-400/20 text-red-300 flex items-center justify-center transition hover:bg-red-500/20"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        {canDeleteCity && (
+                          <button
+                            onClick={() => deleteCity(city.id)}
+                            className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-400/20 text-red-300 flex items-center justify-center transition hover:bg-red-500/20"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+
+                        {!canEditCity && !canDeleteCity && (
+                          <span className="
+                            inline-flex
+                            items-center
+                            justify-center
+                            gap-2
+                            px-3
+                            py-2
+                            rounded-2xl
+                            border
+                            border-cyan-400/15
+                            bg-cyan-500/10
+                            text-cyan-300
+                            text-xs
+                          ">
+                            <Eye size={14} />
+                            عرض فقط
+                          </span>
+                        )}
 
                       </div>
                     </td>
@@ -263,7 +382,7 @@ function CityTable() {
 
         </div>
 
-        {selectedCity && (
+        {selectedCity && canEditCity && (
           <EditCityModal
             city={selectedCity}
             closeModal={() => setSelectedCity(null)}

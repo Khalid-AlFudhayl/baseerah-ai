@@ -4,4 +4,14 @@ const API = axios.create({
   baseURL: 'https://baseerah-ai-backend.onrender.com'
 })
 
+API.interceptors.request.use((config) => {
+  const token = localStorage.getItem('baseerah_token')
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+
+  return config
+})
+
 export default API
