@@ -507,6 +507,102 @@ app.post('/auth/login', async (req, res) => {
   }
 })
 
+app.get(
+  '/users',
+  authMiddleware,
+  allowRoles('admin'),
+  async (req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT id, full_name, email, role, created_at
+        FROM users
+        ORDER BY id ASC
+      `)
+
+      res.json(result.rows)
+    } catch (error) {
+      console.log('GET /users error:', error.message)
+      res.status(500).json([])
+    }
+  }
+)
+
+app.put(
+  '/users/:id/role',
+  authMiddleware,
+  allowRoles('admin'),
+  async (req, res) => {
+    try {
+      const { id } = req.params
+      const { role } = req.body
+
+      if (!['admin', 'manager', 'viewer'].includes(role)) {
+        return res.status(400).json({
+          error: 'Invalid role',
+        })
+      }
+
+      const result = await pool.query(
+        `
+        UPDATE users
+        SET role = $1
+        WHERE id = $2
+        RETURNING id, full_name, email, role, created_at
+        `,
+        [role, id]
+      )
+
+      await addActivityLog(
+        getUserNameFromRequest(req),
+        `UPDATE_USER_ROLE: ${id} -> ${role}`
+      )
+
+      res.json(result.rows[0])
+    } catch (error) {
+      console.log('PUT /users/:id/role error:', error.message)
+      res.status(500).json({
+        error: 'Failed to update user role',
+      })
+    }
+  }
+)
+
+app.delete(
+  '/users/:id',
+  authMiddleware,
+  allowRoles('admin'),
+  async (req, res) => {
+    try {
+      const { id } = req.params
+
+      if (Number(id) === Number(req.user.id)) {
+        return res.status(400).json({
+          error: 'You cannot delete your own account',
+        })
+      }
+
+      await pool.query(
+        'DELETE FROM users WHERE id = $1',
+        [id]
+      )
+
+      await addActivityLog(
+        getUserNameFromRequest(req),
+        `DELETE_USER_ID: ${id}`
+      )
+
+      res.json({
+        message: 'User deleted successfully',
+      })
+    } catch (error) {
+      console.log('DELETE /users/:id error:', error.message)
+      res.status(500).json({
+        error: 'Failed to delete user',
+      })
+    }
+  }
+)
+
 app.get('/auth/me', authMiddleware, async (req, res) => {
   res.json({
     user: req.user,
