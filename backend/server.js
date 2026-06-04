@@ -269,6 +269,36 @@ const updateRandomCityData = async () => {
   }
 }
 
+const saveAILog = async (
+  prompt,
+  response,
+  regionId = null
+) => {
+  try {
+    await pool.query(
+      `
+      INSERT INTO ai_logs
+      (
+        region_id,
+        prompt,
+        response
+      )
+      VALUES ($1, $2, $3)
+      `,
+      [
+        regionId,
+        prompt,
+        response
+      ]
+    )
+  } catch (error) {
+    console.log(
+      'AI log error:',
+      error.message
+    )
+  }
+}
+
 const buildCitySummary = (cities) => {
   return cities.map((city) => `
 المنطقة: ${city.city}
@@ -769,18 +799,27 @@ app.post('/ai', async (req, res) => {
       })
     }
 
-    if (!openai) {
-      const reply = buildLocalAIReply(message, cities)
+   if (!openai) {
+     const reply =
+    buildLocalAIReply(
+      message,
+      cities
+    )
 
-      await addActivityLog(
-        'System User',
-        'AI_REQUEST'
+     await saveAILog(
+    message,
+    reply
+     )
+
+    await addActivityLog(
+    'System User',
+    'AI_REQUEST'
       )
 
-      return res.json({
-        reply,
-      })
-    }
+   return res.json({
+    reply,
+     })
+   }
 
     const citySummary = buildCitySummary(cities)
 
@@ -806,12 +845,18 @@ ${message}
       completion.output_text ||
       buildLocalAIReply(message, cities)
 
-    await addActivityLog(
-      'System User',
-      'AI_REQUEST'
-    )
+     await saveAILog(
+       message,
+       reply
+      )
 
-    res.json({ reply })
+     await addActivityLog(
+       'System User',
+       'AI_REQUEST'
+     )
+
+
+      res.json({ reply })
   } catch (error) {
     console.log('POST /ai error:', error.message)
 
@@ -822,12 +867,21 @@ ${message}
         ''
 
       const cities = await getCities()
-      const reply = buildLocalAIReply(message, cities)
+      const reply =
+      buildLocalAIReply(
+         message,
+         cities
+       )
 
-      await addActivityLog(
-        'System User',
+       await saveAILog(
+        message,
+        reply
+       )
+
+       await addActivityLog(
+       'System User',
         'AI_REQUEST_FALLBACK'
-      )
+       )
 
       return res.json({
         reply,
