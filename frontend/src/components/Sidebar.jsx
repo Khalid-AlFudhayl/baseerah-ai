@@ -9,7 +9,8 @@ import {
   BrainCircuit,
   Settings,
   UserRound,
-  Radio
+  Radio,
+  UsersRound
 } from 'lucide-react'
 
 function Sidebar() {
@@ -28,11 +29,18 @@ function Sidebar() {
   ]
 
   if (role === 'admin') {
-    navLinks.push({
-      to: '/settings',
-      label: 'الإعدادات',
-      icon: <Settings size={18} />
-    })
+    navLinks.push(
+      {
+        to: '/users',
+        label: 'إدارة المستخدمين',
+        icon: <UsersRound size={18} />
+      },
+      {
+        to: '/settings',
+        label: 'الإعدادات',
+        icon: <Settings size={18} />
+      }
+    )
   }
 
   return (

@@ -17,6 +17,7 @@ import AIAssistant from './components/AIAssistant'
 
 import Login from './pages/Login'
 import Settings from './pages/Settings'
+import Users from './pages/Users'
 
 import API from './services/api'
 
@@ -364,38 +365,41 @@ function App() {
         ">
           <Navbar onLogout={handleLogout} />
 
-          <Routes>
-            <Route
-              path="/"
+             <Routes>
+              <Route
+             path="/"
               element={
-                <DashboardPage
-                  stats={stats}
-                  chartData={chartData}
-                />
+             <DashboardPage
+              stats={stats}
+             chartData={chartData}
+              />
               }
-            />
+             />
 
-            <Route path="/cities" element={<CitiesPage />} />
+             <Route path="/cities" element={<CitiesPage />} />
 
-            <Route
-              path="/analytics"
+             <Route
+             path="/analytics"
               element={
-                <AnalyticsPage chartData={chartData} />
-              }
-            />
+              <AnalyticsPage chartData={chartData} />
+             }
+             />
 
-            <Route path="/alerts" element={<AlertsPage />} />
+             <Route path="/alerts" element={<AlertsPage />} />
 
-            <Route path="/ai" element={<AIPage />} />
+             <Route path="/ai" element={<AIPage />} />
 
-            {currentUser?.role === 'admin' && (
-              <Route path="/settings" element={<Settings />} />
-            )}
+             {currentUser?.role === 'admin' && (
+             <>
+             <Route path="/users" element={<Users />} />
+             <Route path="/settings" element={<Settings />} />
+              </>
+             )}
 
-            <Route path="/login" element={<Navigate to="/" replace />} />
+             <Route path="/login" element={<Navigate to="/" replace />} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+             <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
         </main>
       </div>
 
