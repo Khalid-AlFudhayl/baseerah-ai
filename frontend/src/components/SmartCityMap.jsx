@@ -19,7 +19,6 @@ import {
 import 'leaflet/dist/leaflet.css'
 
 function MapResizeFix() {
-
   const map = useMap()
 
   useEffect(() => {
@@ -32,7 +31,6 @@ function MapResizeFix() {
 }
 
 function SmartCityMap() {
-
   const [cities, setCities] = useState([])
 
   const normalizeName = (name) => {
@@ -69,8 +67,12 @@ function SmartCityMap() {
     return () => clearInterval(interval)
   }, [])
 
+  const getNumber = (value) => {
+    return Number(String(value || '0').replace('%', '')) || 0
+  }
+
   const getColor = (traffic) => {
-    const value = Number(String(traffic).replace('%', ''))
+    const value = getNumber(traffic)
 
     if (value >= 80) return '#FF4D4D'
     if (value >= 65) return '#FF8A00'
@@ -78,18 +80,29 @@ function SmartCityMap() {
   }
 
   const getLevel = (traffic) => {
-    const value = Number(String(traffic).replace('%', ''))
+    const value = getNumber(traffic)
 
-    if (value >= 80) return 'مرتفع'
+    if (value >= 80) return 'مزدحم'
     if (value >= 65) return 'نشط'
     return 'مستقر'
   }
 
-  const visibleCities =
-    cities.filter((city) => {
-      const cityName = normalizeName(city.city)
-      return locations[cityName]
-    })
+  const visibleCities = cities.filter((city) => {
+    const cityName = normalizeName(city.city)
+    return locations[cityName]
+  })
+
+  const stableCount =
+    visibleCities.filter((city) => getNumber(city.traffic) < 65).length
+
+  const activeCount =
+    visibleCities.filter((city) => {
+      const traffic = getNumber(city.traffic)
+      return traffic >= 65 && traffic < 80
+    }).length
+
+  const crowdedCount =
+    visibleCities.filter((city) => getNumber(city.traffic) >= 80).length
 
   return (
     <div className="
@@ -138,7 +151,7 @@ function SmartCityMap() {
               </h2>
 
               <p className="text-gray-400 text-sm mt-1">
-                مراقبة حية لنطاق أبها وجامعة الملك خالد
+                مراقبة جغرافية حية لمؤشرات مدينة أبها
               </p>
             </div>
 
@@ -158,45 +171,38 @@ function SmartCityMap() {
             text-xs
           ">
             <Radio size={13} />
-            LIVE MAP
+            LIVE GIS
           </div>
 
         </div>
 
-        <div className="
-          grid
-          grid-cols-3
-          gap-3
-          mb-4
-        ">
+        <div className="grid grid-cols-4 gap-3 mb-4">
 
           <div className="bg-[#08111F]/85 border border-cyan-400/10 rounded-2xl px-4 py-3">
-            <p className="text-gray-400 text-xs">
-              مناطق مرصودة
-            </p>
-
+            <p className="text-gray-400 text-xs">مناطق مرصودة</p>
             <h3 className="text-2xl font-black text-cyan-300 mt-1">
               {visibleCities.length}
             </h3>
           </div>
 
           <div className="bg-[#08111F]/85 border border-green-400/10 rounded-2xl px-4 py-3">
-            <p className="text-gray-400 text-xs">
-              النطاق
-            </p>
-
-            <h3 className="text-sm font-black text-green-300 mt-2">
-              أبها
+            <p className="text-gray-400 text-xs">مستقرة</p>
+            <h3 className="text-2xl font-black text-green-300 mt-1">
+              {stableCount}
             </h3>
           </div>
 
           <div className="bg-[#08111F]/85 border border-orange-400/10 rounded-2xl px-4 py-3">
-            <p className="text-gray-400 text-xs">
-              التحديث
-            </p>
+            <p className="text-gray-400 text-xs">نشطة</p>
+            <h3 className="text-2xl font-black text-orange-300 mt-1">
+              {activeCount}
+            </h3>
+          </div>
 
-            <h3 className="text-sm font-black text-orange-300 mt-2">
-              30 ثانية
+          <div className="bg-[#08111F]/85 border border-red-400/10 rounded-2xl px-4 py-3">
+            <p className="text-gray-400 text-xs">مزدحمة</p>
+            <h3 className="text-2xl font-black text-red-300 mt-1">
+              {crowdedCount}
             </h3>
           </div>
 
@@ -214,7 +220,7 @@ function SmartCityMap() {
 
           <MapContainer
             center={[18.1900, 42.6000]}
-            zoom={10}
+            zoom={11}
             scrollWheelZoom={true}
             className="h-full w-full"
           >
@@ -227,7 +233,6 @@ function SmartCityMap() {
             />
 
             {visibleCities.map((city) => {
-
               const cityName = normalizeName(city.city)
               const position = locations[cityName]
               const color = getColor(city.traffic)
@@ -236,11 +241,11 @@ function SmartCityMap() {
                 <CircleMarker
                   key={city.id}
                   center={position}
-                  radius={17}
+                  radius={18}
                   pathOptions={{
                     color,
                     fillColor: color,
-                    fillOpacity: 0.82,
+                    fillOpacity: 0.78,
                     weight: 4
                   }}
                 >
@@ -249,28 +254,29 @@ function SmartCityMap() {
                     <div style={{
                       direction: 'rtl',
                       textAlign: 'right',
-                      minWidth: '180px'
+                      minWidth: '220px',
+                      color: '#E2E8F0'
                     }}>
 
                       <strong style={{
-                        color: '#0F172A',
-                        fontSize: '15px'
+                        color: '#FFFFFF',
+                        fontSize: '16px'
                       }}>
                         {city.city}
                       </strong>
 
                       <div style={{
                         marginTop: '10px',
-                        lineHeight: '1.9',
-                        color: '#334155'
+                        lineHeight: '2',
+                        color: '#E2E8F0'
                       }}>
-                        المرور: {city.traffic}
-                        <br />
-                        جودة الهواء: {city.air}
-                        <br />
-                        الحالة: {city.status}
-                        <br />
-                        المستوى: {getLevel(city.traffic)}
+                        <div>🚗 المرور: {city.traffic}</div>
+                        <div>🌬 جودة الهواء: {city.air}</div>
+                        <div>⚡ الطاقة: {city.energy}</div>
+                        <div>💧 المياه: {city.water}</div>
+                        <div>🛡 السلامة: {city.security}</div>
+                        <div>📍 الحالة: {city.status}</div>
+                        <div>📊 المستوى: {getLevel(city.traffic)}</div>
                       </div>
 
                     </div>
@@ -278,7 +284,6 @@ function SmartCityMap() {
 
                 </CircleMarker>
               )
-
             })}
 
           </MapContainer>
@@ -287,14 +292,38 @@ function SmartCityMap() {
             pointer-events-none
             absolute
             inset-0
-            bg-[radial-gradient(circle_at_center,transparent_55%,rgba(5,11,20,0.28))]
+            bg-[radial-gradient(circle_at_center,transparent_55%,rgba(5,11,20,0.18))]
           "></div>
+
+          <div className="
+            absolute
+            top-4
+            left-4
+            z-[700]
+            bg-[#07111F]/90
+            border
+            border-green-500/10
+            rounded-2xl
+            px-4
+            py-3
+            backdrop-blur-xl
+            flex
+            items-center
+            gap-2
+            text-green-300
+            text-xs
+            shadow-[0_0_25px_rgba(0,0,0,0.35)]
+          ">
+            <Navigation size={14} />
+            ABHA DIGITAL TWIN
+          </div>
 
           <div className="
             absolute
             bottom-4
             right-4
-            bg-[#07111F]/85
+            z-[700]
+            bg-[#07111F]/90
             border
             border-cyan-500/10
             rounded-2xl
@@ -304,6 +333,7 @@ function SmartCityMap() {
             flex
             items-center
             gap-3
+            shadow-[0_0_25px_rgba(0,0,0,0.35)]
           ">
 
             <div className="
@@ -335,23 +365,36 @@ function SmartCityMap() {
 
           <div className="
             absolute
-            top-4
+            bottom-4
             left-4
-            bg-[#07111F]/85
+            z-[700]
+            bg-[#07111F]/90
             border
-            border-green-500/10
+            border-cyan-500/10
             rounded-2xl
             px-4
             py-3
             backdrop-blur-xl
-            flex
-            items-center
-            gap-2
-            text-green-300
             text-xs
+            space-y-2
+            shadow-[0_0_25px_rgba(0,0,0,0.35)]
           ">
-            <Navigation size={14} />
-            ABHA DIGITAL TWIN
+
+            <div className="flex items-center gap-2 text-green-300">
+              <span className="w-3 h-3 rounded-full bg-green-400"></span>
+              مستقر أقل من 65%
+            </div>
+
+            <div className="flex items-center gap-2 text-orange-300">
+              <span className="w-3 h-3 rounded-full bg-orange-400"></span>
+              نشط 65% - 79%
+            </div>
+
+            <div className="flex items-center gap-2 text-red-300">
+              <span className="w-3 h-3 rounded-full bg-red-400"></span>
+              مزدحم 80%+
+            </div>
+
           </div>
 
         </div>
