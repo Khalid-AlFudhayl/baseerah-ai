@@ -11,76 +11,147 @@ import {
   PlusCircle,
   Pencil,
   LogIn,
-  Radio
+  Radio,
+  UserCog,
+  UserPlus,
+  UserX,
+  Bell
 } from 'lucide-react'
 
 function ActivityPanel() {
-
   const [activities, setActivities] = useState([])
 
-  const generateActivities = async () => {
+  const formatActionText = (action) => {
+    if (!action) return 'نشاط بالنظام'
+
+    return String(action)
+      .replace('LOGIN', 'تسجيل دخول')
+      .replace('ADD_CITY:', 'إضافة منطقة:')
+      .replace('UPDATE_CITY:', 'تحديث منطقة:')
+      .replace('DELETE_CITY_ID:', 'حذف منطقة رقم:')
+      .replace('AI_REQUEST_FALLBACK', 'طلب ذكاء اصطناعي احتياطي')
+      .replace('AI_REQUEST', 'طلب ذكاء اصطناعي')
+      .replace('REGISTER_USER:', 'إضافة مستخدم:')
+      .replace('UPDATE_USER_ROLE:', 'تعديل صلاحية مستخدم:')
+      .replace('DELETE_USER_ID:', 'حذف مستخدم رقم:')
+      .replace('REGISTER_PUSH_TOKEN', 'تسجيل رمز إشعارات')
+  }
+
+  const getActivityMeta = (action) => {
+    const value = String(action || '')
+
+    if (value.includes('LOGIN')) {
+      return {
+        title: 'تسجيل دخول',
+        type: 'success',
+        iconType: 'login'
+      }
+    }
+
+    if (value.includes('ADD_CITY')) {
+      return {
+        title: 'إضافة منطقة',
+        type: 'success',
+        iconType: 'add'
+      }
+    }
+
+    if (value.includes('UPDATE_CITY')) {
+      return {
+        title: 'تحديث بيانات منطقة',
+        type: 'warning',
+        iconType: 'update'
+      }
+    }
+
+    if (value.includes('DELETE_CITY')) {
+      return {
+        title: 'حذف منطقة',
+        type: 'critical',
+        iconType: 'delete'
+      }
+    }
+
+    if (value.includes('AI_REQUEST')) {
+      return {
+        title: 'طلب ذكاء اصطناعي',
+        type: 'info',
+        iconType: 'ai'
+      }
+    }
+
+    if (value.includes('REGISTER_USER')) {
+      return {
+        title: 'إضافة مستخدم',
+        type: 'success',
+        iconType: 'userAdd'
+      }
+    }
+
+    if (value.includes('UPDATE_USER_ROLE')) {
+      return {
+        title: 'تعديل صلاحية',
+        type: 'warning',
+        iconType: 'userRole'
+      }
+    }
+
+    if (value.includes('DELETE_USER')) {
+      return {
+        title: 'حذف مستخدم',
+        type: 'critical',
+        iconType: 'userDelete'
+      }
+    }
+
+    if (value.includes('REGISTER_PUSH_TOKEN')) {
+      return {
+        title: 'تسجيل إشعارات',
+        type: 'info',
+        iconType: 'notification'
+      }
+    }
+
+    return {
+      title: 'نشاط بالنظام',
+      type: 'info',
+      iconType: 'default'
+    }
+  }
+
+  const fetchActivities = async () => {
     try {
       const response = await API.get('/activity-logs')
       const logs = response.data || []
 
-      const generatedActivities = logs.map((log) => {
-        let title = 'نشاط بالنظام'
-        let type = 'info'
-        let iconType = 'default'
-
-        if (log.action.includes('LOGIN')) {
-          title = 'تسجيل دخول'
-          type = 'success'
-          iconType = 'login'
-        }
-
-        else if (log.action.includes('ADD_CITY')) {
-          title = 'إضافة منطقة'
-          type = 'success'
-          iconType = 'add'
-        }
-
-        else if (log.action.includes('UPDATE_CITY')) {
-          title = 'تحديث بيانات منطقة'
-          type = 'warning'
-          iconType = 'update'
-        }
-
-        else if (log.action.includes('DELETE_CITY')) {
-          title = 'حذف منطقة'
-          type = 'critical'
-          iconType = 'delete'
-        }
-
-        else if (log.action.includes('AI_REQUEST')) {
-          title = 'طلب ذكاء اصطناعي'
-          type = 'info'
-          iconType = 'ai'
-        }
+      const mappedActivities = logs.map((log) => {
+        const meta = getActivityMeta(log.action)
 
         return {
-          title,
-          description: `${log.user_name} - ${log.action}`,
+          id: log.id,
+          title: meta.title,
+          description: `${log.user_name || 'System User'} - ${formatActionText(log.action)}`,
           time: new Date(log.created_at).toLocaleTimeString('ar-SA', {
             hour: '2-digit',
             minute: '2-digit'
           }),
-          type,
-          iconType
+          date: new Date(log.created_at).toLocaleDateString('ar-SA'),
+          type: meta.type,
+          iconType: meta.iconType
         }
       })
 
-      setActivities(generatedActivities.slice(0, 8))
+      setActivities(mappedActivities.slice(0, 10))
     } catch (error) {
-      console.log(error)
+      console.log('Activity logs error:', error)
     }
   }
 
   useEffect(() => {
-    generateActivities()
+    fetchActivities()
 
     const interval = setInterval(() => {
-      generateActivities()
+      fetchActivities()
     }, 30000)
 
     return () => clearInterval(interval)
@@ -92,6 +163,10 @@ function ActivityPanel() {
     if (activity.iconType === 'update') return <Pencil size={18} />
     if (activity.iconType === 'delete') return <Trash2 size={18} />
     if (activity.iconType === 'ai') return <BrainCircuit size={18} />
+    if (activity.iconType === 'userAdd') return <UserPlus size={18} />
+    if (activity.iconType === 'userRole') return <UserCog size={18} />
+    if (activity.iconType === 'userDelete') return <UserX size={18} />
+    if (activity.iconType === 'notification') return <Bell size={18} />
     if (activity.type === 'success') return <CheckCircle2 size={18} />
     if (activity.type === 'critical') return <AlertTriangle size={18} />
     return <Car size={18} />
@@ -184,12 +259,12 @@ function ActivityPanel() {
 
           ) : (
 
-            activities.map((activity, index) => {
+            activities.map((activity) => {
               const style = getStyle(activity)
 
               return (
                 <div
-                  key={index}
+                  key={activity.id}
                   className={`group relative overflow-hidden bg-[#08111F]/85 rounded-2xl border ${style.border} p-4 transition duration-300 hover:-translate-y-[2px] hover:border-cyan-400/25`}
                 >
 
@@ -226,9 +301,15 @@ function ActivityPanel() {
 
                         </div>
 
-                        <span className={`px-3 py-1 rounded-xl border text-[11px] whitespace-nowrap ${style.badge}`}>
-                          {activity.time}
-                        </span>
+                        <div className="text-left space-y-1">
+                          <span className={`block px-3 py-1 rounded-xl border text-[11px] whitespace-nowrap ${style.badge}`}>
+                            {activity.time}
+                          </span>
+
+                          <span className="block text-[10px] text-gray-500 whitespace-nowrap">
+                            {activity.date}
+                          </span>
+                        </div>
 
                       </div>
 

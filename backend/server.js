@@ -810,76 +810,6 @@ app.delete(
   }
 )
 
-app.get('/alerts', async (req, res) => {
-  try {
-    const cities = await getCities()
-    const alerts = []
-
-    cities.forEach((city) => {
-      const traffic = getNumber(city.traffic)
-      const air = getNumber(city.air)
-      const energy = getNumber(city.energy)
-      const water = getNumber(city.water)
-      const security = getNumber(city.security)
-
-      if (traffic >= 80) {
-        alerts.push({
-          id: `traffic-${city.id}`,
-          title: 'ازدحام مروري مرتفع',
-          description: `${city.city} تسجل حركة مرور مرتفعة بنسبة ${city.traffic}`,
-          level: 'مرتفع',
-          time: 'الآن',
-        })
-      }
-
-      if (air >= 55) {
-        alerts.push({
-          id: `air-${city.id}`,
-          title: 'تنبيه جودة الهواء',
-          description: `${city.city} تسجل مؤشر جودة هواء يحتاج متابعة: ${city.air}`,
-          level: 'متوسط',
-          time: 'الآن',
-        })
-      }
-
-      if (energy >= 88) {
-        alerts.push({
-          id: `energy-${city.id}`,
-          title: 'ارتفاع استهلاك الطاقة',
-          description: `${city.city} تسجل استهلاك طاقة مرتفع بنسبة ${city.energy}`,
-          level: 'متوسط',
-          time: 'قبل دقائق',
-        })
-      }
-
-      if (water >= 85) {
-        alerts.push({
-          id: `water-${city.id}`,
-          title: 'ارتفاع استهلاك المياه',
-          description: `${city.city} تسجل استهلاك مياه مرتفع بنسبة ${city.water}`,
-          level: 'متوسط',
-          time: 'قبل دقائق',
-        })
-      }
-
-      if (security < 85) {
-        alerts.push({
-          id: `security-${city.id}`,
-          title: 'متابعة السلامة العامة',
-          description: `${city.city} تسجل مؤشر أمان أقل من المستوى المطلوب: ${city.security}`,
-          level: 'متوسط',
-          time: 'الآن',
-        })
-      }
-    })
-
-    res.json(alerts)
-  } catch (error) {
-    console.log('GET /alerts error:', error.message)
-    res.status(500).json([])
-  }
-})
-
 app.post('/ai', async (req, res) => {
   try {
     const message =
@@ -1066,6 +996,27 @@ app.get('/activity-logs', async (req, res) => {
     console.log(error)
 
     res.status(500).json([])
+  }
+})
+
+app.get('/alerts', async (req, res) => {
+  try {
+
+    const result = await pool.query(`
+      SELECT *
+      FROM alerts
+      ORDER BY id DESC
+    `)
+
+    res.json(result.rows)
+
+  } catch (error) {
+
+    console.log(error)
+
+    res.status(500).json({
+      error: 'Failed to load alerts'
+    })
   }
 })
 
