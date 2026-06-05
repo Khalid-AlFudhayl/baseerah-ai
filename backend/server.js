@@ -217,9 +217,32 @@ const sendCriticalAlerts = async (cities) => {
   }
 }
 
+const getAlertRecommendation = (alertType, cityName) => {
+  if (alertType === 'TRAFFIC') {
+    return `تم رصد ازدحام مروري مرتفع في نطاق ${city.city} بنسبة ${city.traffic}، ويوصى باستخدام المسارات البديلة ومراقبة الحركة المرورية.`
+  }
+
+  if (alertType === 'AIR') {
+    return `تم رصد انخفاض في جودة الهواء في نطاق ${city.city} بمؤشر ${city.air} نقطة، ويوصى بمتابعة المؤشر واتخاذ الإجراءات الوقائية عند استمرار الانخفاض.`
+  }
+
+  if (alertType === 'ENERGY') {
+    return `تم رصد ارتفاع في استهلاك الطاقة في نطاق ${city.city} بنسبة ${city.energy}، ويوصى بمراجعة الأحمال التشغيلية وتحسين توزيع الاستهلاك.`
+  }
+
+  if (alertType === 'WATER') {
+    return `تم رصد انخفاض في مؤشر السلامة العامة في نطاق ${city.city} بنسبة ${city.security}، ويوصى برفع مستوى المتابعة الميدانية.`
+  }
+
+  if (alertType === 'SECURITY') {
+    return `يوصى برفع مستوى المتابعة الميدانية في نطاق ${cityName} ومراجعة مؤشرات السلامة العامة.`
+  }
+
+  return `يوصى بمتابعة المؤشر التشغيلي في نطاق ${cityName} واتخاذ الإجراء المناسب.`
+}
+
 const generateAutomaticAlerts = async () => {
   try {
-
     await pool.query(`
       DELETE FROM alerts
       WHERE alert_type IN (
@@ -234,106 +257,97 @@ const generateAutomaticAlerts = async () => {
     const citiesResult = await pool.query(`
       SELECT *
       FROM cities
+      ORDER BY id ASC
     `)
 
     const cities = citiesResult.rows
 
-    for (const city of cities) {
+    const getValue = (value) => {
+      return Number(String(value || '0').replace('%', '')) || 0
+    }
 
-      const traffic = Number(city.traffic)
-      const air = Number(city.air)
-      const energy = Number(city.energy)
-      const water = Number(city.water)
-      const security = Number(city.security)
+    for (const city of cities) {
+      const traffic = getValue(city.traffic)
+      const air = getValue(city.air)
+      const energy = getValue(city.energy)
+      const water = getValue(city.water)
+      const security = getValue(city.security)
 
       if (traffic >= 80) {
-
         await pool.query(`
           INSERT INTO alerts
           (region_id, alert_type, severity, message)
-          VALUES ($1,$2,$3,$4)
+          VALUES ($1, $2, $3, $4)
         `, [
           city.id,
           'TRAFFIC',
           'HIGH',
-          `تم رصد ازدحام مروري مرتفع في نطاق ${city.city}، ويوصى بمراقبة الحركة المرورية.`
+          `تم رصد ازدحام مروري مرتفع في نطاق ${city.city} بنسبة ${traffic}٪، ويوصى باستخدام المسارات البديلة ومراقبة الحركة المرورية.`
         ])
       }
 
       if (air >= 55) {
-
         await pool.query(`
           INSERT INTO alerts
           (region_id, alert_type, severity, message)
-          VALUES ($1,$2,$3,$4)
+          VALUES ($1, $2, $3, $4)
         `, [
           city.id,
           'AIR',
           'MEDIUM',
-          `تم رصد انخفاض في جودة الهواء في نطاق ${city.city}، ويوصى بمتابعة المؤشر.`
+          `تم رصد انخفاض في جودة الهواء في نطاق ${city.city} بمؤشر ${air} نقطة، ويوصى بمتابعة المؤشر واتخاذ الإجراءات الوقائية عند استمرار الانخفاض.`
         ])
       }
 
       if (energy >= 85) {
-
         await pool.query(`
           INSERT INTO alerts
           (region_id, alert_type, severity, message)
-          VALUES ($1,$2,$3,$4)
+          VALUES ($1, $2, $3, $4)
         `, [
           city.id,
           'ENERGY',
           'MEDIUM',
-          `تم رصد ارتفاع في استهلاك الطاقة في نطاق ${city.city}، ويوصى بمراجعة الأحمال التشغيلية.`
+          `تم رصد ارتفاع في استهلاك الطاقة في نطاق ${city.city} بنسبة ${energy}٪، ويوصى بمراجعة الأحمال التشغيلية وتحسين توزيع الاستهلاك.`
         ])
       }
 
       if (water >= 85) {
-
         await pool.query(`
           INSERT INTO alerts
           (region_id, alert_type, severity, message)
-          VALUES ($1,$2,$3,$4)
+          VALUES ($1, $2, $3, $4)
         `, [
           city.id,
           'WATER',
           'MEDIUM',
-          `تم رصد ارتفاع في استهلاك المياه في نطاق ${city.city}، ويوصى بمراجعة الاستهلاك.`
+          `تم رصد ارتفاع في استهلاك المياه في نطاق ${city.city} بنسبة ${water}٪، ويوصى بمراجعة نمط الاستهلاك والتحقق من أي استهلاك غير طبيعي.`
         ])
       }
 
       if (security < 85) {
-
         await pool.query(`
           INSERT INTO alerts
           (region_id, alert_type, severity, message)
-          VALUES ($1,$2,$3,$4)
+          VALUES ($1, $2, $3, $4)
         `, [
           city.id,
           'SECURITY',
           'MEDIUM',
-          `تم رصد انخفاض في مؤشر السلامة العامة في نطاق ${city.city}، ويوصى بالمتابعة الفورية.`
+          `تم رصد انخفاض في مؤشر السلامة العامة في نطاق ${city.city} بنسبة ${security}٪، ويوصى برفع مستوى المتابعة الميدانية.`
         ])
       }
-
     }
+
     const alertsResult = await pool.query(`
-  SELECT *
-  FROM alerts
-  ORDER BY id DESC
-`)
+      SELECT *
+      FROM alerts
+      ORDER BY id DESC
+    `)
 
-io.emit(
-  'alerts:update',
-  alertsResult.rows
-)
+    io.emit('alerts:update', alertsResult.rows)
   } catch (error) {
-
-    console.log(
-      'Automatic alerts error:',
-      error.message
-    )
-
+    console.log('Automatic alerts error:', error.message)
   }
 }
 
