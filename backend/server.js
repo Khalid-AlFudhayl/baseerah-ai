@@ -351,6 +351,64 @@ const generateAutomaticAlerts = async () => {
   }
 }
 
+const generateAIRecommendations = async () => {
+  try {
+    const cities = await getCities()
+
+    await pool.query(`
+      DELETE FROM ai_recommendations
+    `)
+
+    for (const city of cities) {
+      const traffic = Number(String(city.traffic || '0').replace('%', '')) || 0
+      const air = Number(String(city.air || '0').replace('%', '')) || 0
+      const energy = Number(String(city.energy || '0').replace('%', '')) || 0
+      const water = Number(String(city.water || '0').replace('%', '')) || 0
+      const security = Number(String(city.security || '0').replace('%', '')) || 0
+
+      let recommendation = null
+
+     if (traffic >= 85) {
+  recommendation =
+    `تم رصد ازدحام مروري مرتفع في ${city.city}. يوصى بتفعيل المسارات البديلة وتعزيز إدارة الحركة المرورية لتقليل زمن التنقل وتحسين انسيابية الطرق.`
+}
+
+else if (air >= 55) {
+  recommendation =
+    `تم تسجيل تراجع في مؤشرات جودة الهواء في ${city.city}. يوصى بزيادة المراقبة البيئية ومتابعة مستويات التلوث خلال الساعات القادمة.`
+}
+
+else if (energy >= 90) {
+  recommendation =
+    `تم تسجيل ارتفاع ملحوظ في استهلاك الطاقة داخل ${city.city}. يوصى بمراجعة الأحمال التشغيلية وترشيد الاستهلاك خلال فترات الذروة.`
+}
+
+else if (water >= 90) {
+  recommendation =
+    `تم تسجيل ارتفاع في استهلاك المياه داخل ${city.city}. يوصى بمراقبة أنماط الاستهلاك وتحسين كفاءة إدارة الموارد المائية.`
+}
+
+else if (security <= 82) {
+  recommendation =
+    `تم رصد انخفاض في مؤشر السلامة العامة داخل ${city.city}. يوصى برفع مستوى المتابعة الميدانية وتعزيز الإجراءات الوقائية في المنطقة.`
+}
+
+      if (recommendation) {
+        await pool.query(
+          `
+          INSERT INTO ai_recommendations
+          (city_name, recommendation)
+          VALUES ($1, $2)
+          `,
+          [city.city, recommendation]
+        )
+      }
+    }
+  } catch (error) {
+    console.log('AI recommendations error:', error.message)
+  }
+}
+
 const updateRandomCityData = async () => {
   try {
     const cities = await getCities()
@@ -398,6 +456,7 @@ const updateRandomCityData = async () => {
 
     await generateAutomaticAlerts()
     await sendCriticalAlerts(updatedCities)
+    await generateAIRecommendations()
     await emitLiveData()
   } catch (error) {
     console.log('Live update error:', error.message)
@@ -1147,7 +1206,6 @@ app.get('/activity-logs', async (req, res) => {
 
 app.get('/alerts', async (req, res) => {
   try {
-
     const result = await pool.query(`
       SELECT *
       FROM alerts
@@ -1155,13 +1213,30 @@ app.get('/alerts', async (req, res) => {
     `)
 
     res.json(result.rows)
-
   } catch (error) {
-
-    console.log(error)
+    console.log('GET /alerts error:', error.message)
 
     res.status(500).json({
       error: 'Failed to load alerts'
+    })
+  }
+})
+
+app.get('/ai-recommendations', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT *
+      FROM ai_recommendations
+      ORDER BY id DESC
+      LIMIT 20
+    `)
+
+    res.json(result.rows)
+  } catch (error) {
+    console.log('GET /ai-recommendations error:', error.message)
+
+    res.status(500).json({
+      error: 'Failed to load recommendations'
     })
   }
 })
