@@ -353,9 +353,9 @@ const generateAutomaticAlerts = async () => {
 
 const generateAIPrompt = (city) => {
   return `
-أنت محلل تشغيل ذكي داخل منصة بصيرة للمدن الذكية.
+أنت محلل مدن ذكية محترف داخل منصة بصيرة.
 
-حلل بيانات المنطقة التالية:
+بيانات المنطقة:
 
 اسم المنطقة: ${city.city}
 الحركة المرورية: ${city.traffic}
@@ -364,15 +364,20 @@ const generateAIPrompt = (city) => {
 استهلاك المياه: ${city.water}
 السلامة العامة: ${city.security}
 
-اكتب توصية تشغيلية واحدة فقط باللغة العربية الرسمية.
+المطلوب:
 
-الشروط:
-- ابدأ مباشرة بالتوصية بدون مقدمة.
-- لا تذكر أنك نموذج ذكاء اصطناعي.
-- لا تستخدم تعداد أو نقاط.
-- لا تتجاوز 35 كلمة.
-- اذكر اسم المنطقة.
-- ركز على أهم مؤشر خطر فقط.
+1- حدد أخطر مؤشر فقط.
+2- اربط التوصية بالقيمة الرقمية الفعلية.
+3- اذكر اسم المنطقة.
+4- اكتب توصية تنفيذية واقعية.
+5- لا تكتب أي مقدمة.
+6- لا تتجاوز 30 كلمة.
+
+مثال جيد:
+
+ارتفع الازدحام المروري في طريق الملك فهد إلى 92٪، ويوصى بتفعيل المسارات البديلة وتعديل توقيت الإشارات الذكية لتقليل زمن التنقل خلال ساعات الذروة.
+
+أعطني التوصية فقط.
 `
 }
 
@@ -403,13 +408,22 @@ const generateAIRecommendations = async () => {
       let recommendation = null
 
       if (openai) {
-        const completion = await openai.responses.create({
-          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-          input: generateAIPrompt(city)
+       const completion = await openai.responses.create({
+       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+       input: generateAIPrompt(city),
+       temperature: 0.3,
+        max_output_tokens: 120
         })
 
         recommendation = completion.output_text
-        
+
+        recommendation = String(recommendation || '')
+       .replace(/^["'“”]+|["'“”]+$/g, '')
+       .trim()
+      } else {
+
+        recommendation = completion.output_text
+
         recommendation = String(recommendation || '')
         .replace(/^["'“”]+|["'“”]+$/g, '')
         .trim()
