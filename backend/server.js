@@ -351,6 +351,31 @@ const generateAutomaticAlerts = async () => {
   }
 }
 
+const generateAIPrompt = (city) => {
+  return `
+أنت محلل تشغيل ذكي داخل منصة بصيرة للمدن الذكية.
+
+حلل بيانات المنطقة التالية:
+
+اسم المنطقة: ${city.city}
+الحركة المرورية: ${city.traffic}
+جودة الهواء: ${city.air}
+استهلاك الطاقة: ${city.energy}
+استهلاك المياه: ${city.water}
+السلامة العامة: ${city.security}
+
+اكتب توصية تشغيلية واحدة فقط باللغة العربية الرسمية.
+
+الشروط:
+- ابدأ مباشرة بالتوصية بدون مقدمة.
+- لا تذكر أنك نموذج ذكاء اصطناعي.
+- لا تستخدم تعداد أو نقاط.
+- لا تتجاوز 35 كلمة.
+- اذكر اسم المنطقة.
+- ركز على أهم مؤشر خطر فقط.
+`
+}
+
 const generateAIRecommendations = async () => {
   try {
     const cities = await getCities()
@@ -366,43 +391,43 @@ const generateAIRecommendations = async () => {
       const water = Number(String(city.water || '0').replace('%', '')) || 0
       const security = Number(String(city.security || '0').replace('%', '')) || 0
 
+      const hasIssue =
+        traffic >= 85 ||
+        air >= 55 ||
+        energy >= 90 ||
+        water >= 90 ||
+        security <= 82
+
+      if (!hasIssue) continue
+
       let recommendation = null
 
-     if (traffic >= 85) {
-  recommendation =
-    `تم رصد ازدحام مروري مرتفع في ${city.city}. يوصى بتفعيل المسارات البديلة وتعزيز إدارة الحركة المرورية لتقليل زمن التنقل وتحسين انسيابية الطرق.`
-}
+      if (openai) {
+        const completion = await openai.responses.create({
+          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          input: generateAIPrompt(city)
+        })
 
-else if (air >= 55) {
-  recommendation =
-    `تم تسجيل تراجع في مؤشرات جودة الهواء في ${city.city}. يوصى بزيادة المراقبة البيئية ومتابعة مستويات التلوث خلال الساعات القادمة.`
-}
-
-else if (energy >= 90) {
-  recommendation =
-    `تم تسجيل ارتفاع ملحوظ في استهلاك الطاقة داخل ${city.city}. يوصى بمراجعة الأحمال التشغيلية وترشيد الاستهلاك خلال فترات الذروة.`
-}
-
-else if (water >= 90) {
-  recommendation =
-    `تم تسجيل ارتفاع في استهلاك المياه داخل ${city.city}. يوصى بمراقبة أنماط الاستهلاك وتحسين كفاءة إدارة الموارد المائية.`
-}
-
-else if (security <= 82) {
-  recommendation =
-    `تم رصد انخفاض في مؤشر السلامة العامة داخل ${city.city}. يوصى برفع مستوى المتابعة الميدانية وتعزيز الإجراءات الوقائية في المنطقة.`
-}
-
-      if (recommendation) {
-        await pool.query(
-          `
-          INSERT INTO ai_recommendations
-          (city_name, recommendation)
-          VALUES ($1, $2)
-          `,
-          [city.city, recommendation]
-        )
+        recommendation = completion.output_text
+        
+        recommendation = String(recommendation || '')
+        .replace(/^["'“”]+|["'“”]+$/g, '')
+        .trim()
       }
+
+      if (!recommendation) {
+        recommendation =
+          `تشير البيانات الحالية في ${city.city} إلى وجود مؤشرات تشغيلية تحتاج إلى متابعة. يوصى بمراجعة الحركة المرورية وجودة الهواء والطاقة والمياه والسلامة العامة واتخاذ الإجراء المناسب حسب الأولوية.`
+      }
+
+      await pool.query(
+        `
+        INSERT INTO ai_recommendations
+        (city_name, recommendation)
+        VALUES ($1, $2)
+        `,
+        [city.city, recommendation]
+      )
     }
   } catch (error) {
     console.log('AI recommendations error:', error.message)
