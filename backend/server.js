@@ -840,8 +840,7 @@ app.get('/auth/me', authMiddleware, async (req, res) => {
   })
 })
 
-app.get('/cities', async (req, res) => {
-  try {
+app.get('/cities', authMiddleware, async (req, res) => {  try {
     const cities = await getCities()
     res.json(cities)
   } catch (error) {
@@ -850,8 +849,7 @@ app.get('/cities', async (req, res) => {
   }
 })
 
-app.get('/dashboard-stats', async (req, res) => {
-  try {
+app.get('/dashboard-stats', authMiddleware, async (req, res) => {  try {
     const stats = await getDashboardStats()
 
     res.json({
@@ -876,8 +874,7 @@ app.get('/dashboard-stats', async (req, res) => {
   }
 })
 
-app.post('/register-push-token', async (req, res) => {
-  try {
+app.post('/register-push-token', authMiddleware, async (req, res) => {  try {
     const { token } = req.body
 
     if (!token) {
@@ -1041,8 +1038,7 @@ app.delete(
   }
 )
 
-app.post('/ai', async (req, res) => {
-  try {
+app.post('/ai', authMiddleware, async (req, res) => {  try {
     const message =
       req.body.message ||
       req.body.question ||
@@ -1177,8 +1173,7 @@ io.on('connection', async (socket) => {
   })
 })
 
-app.get('/system-stats', async (req, res) => {
-  try {
+app.get('/system-stats', authMiddleware, async (req, res) => {  try {
     const usersResult =
       await pool.query('SELECT COUNT(*) FROM users')
 
@@ -1224,8 +1219,7 @@ app.get('/system-stats', async (req, res) => {
   }
 })
 
-app.get('/activity-logs', async (req, res) => {
-  try {
+app.get('/activity-logs', authMiddleware, async (req, res) => {  try {
     const result = await pool.query(`
       SELECT *
       FROM activity_logs
@@ -1241,8 +1235,7 @@ app.get('/activity-logs', async (req, res) => {
   }
 })
 
-app.get('/alerts', async (req, res) => {
-  try {
+app.get('/alerts', authMiddleware, async (req, res) => {  try {
     const result = await pool.query(`
       SELECT *
       FROM alerts
@@ -1259,8 +1252,7 @@ app.get('/alerts', async (req, res) => {
   }
 })
 
-app.get('/ai-recommendations', async (req, res) => {
-  try {
+app.get('/ai-recommendations', authMiddleware, async (req, res) => {  try {
     const result = await pool.query(`
       SELECT *
       FROM ai_recommendations
