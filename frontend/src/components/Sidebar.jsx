@@ -21,27 +21,21 @@ function Sidebar() {
   const role = user.role || 'viewer'
 
   const navLinks = [
-    { to: '/', label: 'الرئيسية', icon: <LayoutDashboard size={18} /> },
-    { to: '/cities', label: 'المدن والمناطق', icon: <MapPinned size={18} /> },
-    { to: '/analytics', label: 'البيانات والتحليلات', icon: <ChartSpline size={18} /> },
-    { to: '/alerts', label: 'التنبيهات', icon: <BellRing size={18} /> },
-    { to: '/ai', label: 'المساعد الذكي', icon: <BrainCircuit size={18} /> }
-  ]
+  { to: '/', label: 'الرئيسية', icon: <LayoutDashboard size={18} /> },
+  { to: '/cities', label: 'المدن والمناطق', icon: <MapPinned size={18} /> },
+  { to: '/analytics', label: 'البيانات والتحليلات', icon: <ChartSpline size={18} /> },
+  { to: '/alerts', label: 'التنبيهات', icon: <BellRing size={18} /> },
+  { to: '/ai', label: 'المساعد الذكي', icon: <BrainCircuit size={18} /> },
+  { to: '/settings', label: 'الإعدادات', icon: <Settings size={18} /> }
+]
 
-  if (role === 'admin') {
-    navLinks.push(
-      {
-        to: '/users',
-        label: 'إدارة المستخدمين',
-        icon: <UsersRound size={18} />
-      },
-      {
-        to: '/settings',
-        label: 'الإعدادات',
-        icon: <Settings size={18} />
-      }
-    )
-  }
+if (role === 'admin') {
+  navLinks.push({
+    to: '/users',
+    label: 'إدارة المستخدمين',
+    icon: <UsersRound size={18} />
+  })
+}
 
   return (
     <aside className="

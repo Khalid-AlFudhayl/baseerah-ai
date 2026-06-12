@@ -219,19 +219,19 @@ const sendCriticalAlerts = async (cities) => {
 
 const getAlertRecommendation = (alertType, cityName) => {
   if (alertType === 'TRAFFIC') {
-    return `تم رصد ازدحام مروري مرتفع في نطاق ${city.city} بنسبة ${city.traffic}، ويوصى باستخدام المسارات البديلة ومراقبة الحركة المرورية.`
+    return `يوصى بمراقبة الحركة المرورية في نطاق ${cityName} وتفعيل المسارات البديلة عند الحاجة.`
   }
 
   if (alertType === 'AIR') {
-    return `تم رصد انخفاض في جودة الهواء في نطاق ${city.city} بمؤشر ${city.air} نقطة، ويوصى بمتابعة المؤشر واتخاذ الإجراءات الوقائية عند استمرار الانخفاض.`
+    return `يوصى بمتابعة جودة الهواء في نطاق ${cityName} وزيادة المراقبة البيئية خلال الساعات القادمة.`
   }
 
   if (alertType === 'ENERGY') {
-    return `تم رصد ارتفاع في استهلاك الطاقة في نطاق ${city.city} بنسبة ${city.energy}، ويوصى بمراجعة الأحمال التشغيلية وتحسين توزيع الاستهلاك.`
+    return `يوصى بمراجعة الأحمال التشغيلية في نطاق ${cityName} وتحسين توزيع استهلاك الطاقة.`
   }
 
   if (alertType === 'WATER') {
-    return `تم رصد انخفاض في مؤشر السلامة العامة في نطاق ${city.city} بنسبة ${city.security}، ويوصى برفع مستوى المتابعة الميدانية.`
+    return `يوصى بمراقبة استهلاك المياه في نطاق ${cityName} والتحقق من أي استهلاك غير طبيعي.`
   }
 
   if (alertType === 'SECURITY') {
@@ -422,11 +422,9 @@ const generateAIRecommendations = async () => {
        .trim()
       } else {
 
-        recommendation = completion.output_text
+        recommendation =
+       `تشير البيانات الحالية في ${city.city} إلى وجود مؤشرات تشغيلية تحتاج إلى متابعة. يوصى بمراجعة الحركة المرورية وجودة الهواء والطاقة والمياه والسلامة العامة واتخاذ الإجراء المناسب حسب الأولوية.`
 
-        recommendation = String(recommendation || '')
-        .replace(/^["'“”]+|["'“”]+$/g, '')
-        .trim()
       }
 
       if (!recommendation) {
