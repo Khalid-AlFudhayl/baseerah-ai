@@ -1052,7 +1052,8 @@ app.delete(
   }
 )
 
-app.post('/ai', authMiddleware, async (req, res) => {  try {
+app.post('/ai', authMiddleware, async (req, res) => {
+  try {
     const message =
       req.body.message ||
       req.body.question ||
@@ -1066,42 +1067,103 @@ app.post('/ai', authMiddleware, async (req, res) => {  try {
       })
     }
 
-   if (!openai) {
-     const reply =
-    buildLocalAIReply(
-      message,
-      cities
-    )
+    const activityUser =
+      req.user?.full_name ||
+      req.user?.email ||
+      `User ${req.user?.id || ''}`.trim() ||
+      'System User'
 
-     await saveAILog(
-    message,
-    reply
-     )
+    const alertsResult = await pool.query(`
+      SELECT
+        alerts.*,
+        cities.city AS city_name
+      FROM alerts
+      LEFT JOIN cities
+        ON cities.id = alerts.region_id
+      ORDER BY alerts.created_at DESC
+      LIMIT 10
+    `)
 
-    await addActivityLog(
-    'System User',
-    'AI_REQUEST'
-      )
+    const recommendationsResult = await pool.query(`
+      SELECT
+        city_name,
+        recommendation,
+        created_at
+      FROM ai_recommendations
+      ORDER BY created_at DESC
+      LIMIT 10
+    `)
 
-   return res.json({
-    reply,
-     })
-   }
+    const alerts = alertsResult.rows || []
+    const recommendations = recommendationsResult.rows || []
+    
 
     const citySummary = buildCitySummary(cities)
 
+    const alertsSummary =
+      alerts.length > 0
+        ? alerts.map((alert, index) => {
+            return `${index + 1}- المنطقة: ${alert.city_name || 'غير محددة'} | النوع: ${alert.alert_type || 'غير محدد'} | الخطورة: ${alert.severity || 'غير محددة'} | الرسالة: ${alert.message || 'لا توجد رسالة'}`
+          }).join('\n')
+        : 'لا توجد تنبيهات حالية.'
+
+    const recommendationsSummary =
+      recommendations.length > 0
+        ? recommendations.map((item, index) => {
+            return `${index + 1}- المنطقة: ${item.city_name || 'غير محددة'} | التوصية: ${item.recommendation || 'لا توجد توصية'}`
+          }).join('\n')
+        : 'لا توجد توصيات AI محفوظة حاليًا.'
+
+    if (!openai) {
+      const reply =
+        buildLocalAIReply(
+          message,
+          cities
+        )
+
+      await saveAILog(
+        message,
+        reply
+      )
+
+      await addActivityLog(
+        activityUser,
+        'AI_REQUEST'
+      )
+
+      return res.json({
+        reply,
+      })
+    }
+
     const completion = await openai.responses.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      input: `
+    input: `
 أنت مساعد ذكي داخل منصة "بصيرة" للتوأم الرقمي لمدينة أبها.
 
 أجب بالعربية فقط.
 كن مختصرًا وواضحًا.
 لا تخترع بيانات.
-اعتمد فقط على بيانات المناطق التالية.
+اعتمد فقط على البيانات الموجودة تحت الأقسام التالية.
+
+قواعد مهمة:
+- لا تذكر أي رقم إلا إذا كان موجودًا صراحة في البيانات.
+- لا تغيّر أسماء المناطق أو قيم المؤشرات.
+- إذا لم تجد الرقم المطلوب في البيانات، قل: لا توجد بيانات كافية.
+- إذا سأل المستخدم عن المدن أو المؤشرات، استخدم بيانات المناطق الحالية فقط.
+- إذا سأل المستخدم عن التنبيهات، استخدم قسم آخر التنبيهات فقط.
+- إذا سأل المستخدم عن توصية محفوظة أو آخر توصية AI، استخدم قسم آخر توصيات AI فقط.
+- إذا طلب المستخدم "كما هي" أو "بدون إعادة صياغة"، انسخ نص التوصية كما هو من البيانات بدون تعديل.
+- لا تقل إنك لا تستطيع عرض معلومات محفوظة إذا كانت التوصية موجودة في قسم آخر توصيات AI.
 
 بيانات المناطق الحالية:
 ${citySummary}
+
+آخر التنبيهات:
+${alertsSummary}
+
+آخر توصيات AI:
+${recommendationsSummary}
 
 سؤال المستخدم:
 ${message}
@@ -1112,18 +1174,19 @@ ${message}
       completion.output_text ||
       buildLocalAIReply(message, cities)
 
-     await saveAILog(
-       message,
-       reply
-      )
+    await saveAILog(
+      message,
+      reply
+    )
 
-     await addActivityLog(
-       'System User',
-       'AI_REQUEST'
-     )
+    await addActivityLog(
+      activityUser,
+      'AI_REQUEST'
+    )
 
-
-      res.json({ reply })
+    return res.json({
+      reply,
+    })
   } catch (error) {
     console.log('POST /ai error:', error.message)
 
@@ -1134,21 +1197,28 @@ ${message}
         ''
 
       const cities = await getCities()
-      const reply =
-      buildLocalAIReply(
-         message,
-         cities
-       )
 
-       await saveAILog(
+      const reply =
+        buildLocalAIReply(
+          message,
+          cities
+        )
+
+      const activityUser =
+        req.user?.full_name ||
+        req.user?.email ||
+        `User ${req.user?.id || ''}`.trim() ||
+        'System User'
+
+      await saveAILog(
         message,
         reply
-       )
+      )
 
-       await addActivityLog(
-       'System User',
+      await addActivityLog(
+        activityUser,
         'AI_REQUEST_FALLBACK'
-       )
+      )
 
       return res.json({
         reply,
