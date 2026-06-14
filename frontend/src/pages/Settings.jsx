@@ -222,6 +222,11 @@ function Settings() {
             </div>
 
             <div className="flex justify-between">
+              <span className="text-gray-400">المطور</span>
+              <span className="text-cyan-300 font-bold">Khalid AlFudhayl</span>
+            </div>
+
+            <div className="flex justify-between">
               <span className="text-gray-400">البيئة التشغيلية</span>
               <span className="text-cyan-300 font-bold">Development</span>
             </div>
