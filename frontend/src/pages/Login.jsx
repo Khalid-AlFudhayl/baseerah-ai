@@ -8,14 +8,41 @@ import {
   ShieldCheck,
   Radio,
   Sparkles,
-  LoaderCircle
+  LoaderCircle,
+  UserRound
 } from 'lucide-react'
 
-function Login({ onLogin }) {
+const DEMO_EMAIL = 'demo@baseerah.ai'
+const DEMO_PASSWORD = '123456'
 
-  const [email, setEmail] = useState('admin@baseerah.ai')
-  const [password, setPassword] = useState('123456')
+function Login({ onLogin }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
+
+  const saveLoginData = (token, user) => {
+    localStorage.setItem('isLoggedIn', 'true')
+    localStorage.setItem('baseerah_token', token)
+    localStorage.setItem('baseerah_user', JSON.stringify(user))
+
+    onLogin()
+  }
+
+  const loginWithCredentials = async (loginEmail, loginPassword) => {
+    const response = await API.post('/auth/login', {
+      email: loginEmail,
+      password: loginPassword
+    })
+
+    const { token, user } = response.data
+
+    if (!token) {
+      throw new Error('No token received')
+    }
+
+    saveLoginData(token, user)
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -28,28 +55,31 @@ function Login({ onLogin }) {
     try {
       setLoading(true)
 
-      const response = await API.post('/auth/login', {
-        email,
-        password,
-      })
-
-      const { token, user } = response.data
-
-      if (!token) {
-        alert('لم يتم استلام رمز الدخول')
-        return
-      }
-
-      localStorage.setItem('isLoggedIn', 'true')
-      localStorage.setItem('baseerah_token', token)
-      localStorage.setItem('baseerah_user', JSON.stringify(user))
-
-      onLogin()
+      await loginWithCredentials(
+        email.trim(),
+        password.trim()
+      )
     } catch (error) {
       console.log(error)
       alert('بيانات الدخول غير صحيحة')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDemoLogin = async () => {
+    try {
+      setDemoLoading(true)
+
+      await loginWithCredentials(
+        DEMO_EMAIL,
+        DEMO_PASSWORD
+      )
+    } catch (error) {
+      console.log(error)
+      alert('تعذر الدخول بالحساب التجريبي. تأكد من وجود حساب demo@baseerah.ai بصلاحية viewer.')
+    } finally {
+      setDemoLoading(false)
     }
   }
 
@@ -329,7 +359,7 @@ function Login({ onLogin }) {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || demoLoading}
                 className="
                   w-full
                   bg-cyan-400
@@ -386,20 +416,60 @@ function Login({ onLogin }) {
                   justify-center
                   text-cyan-300
                 ">
-                  <Sparkles size={18} />
+                  <UserRound size={18} />
                 </div>
 
-                <div>
+                <div className="flex-1">
+
                   <p className="text-gray-400 text-sm">
-                    Admin Access
+                    تجربة النظام
                   </p>
 
                   <p className="text-cyan-300 text-sm mt-1">
-                    admin@baseerah.ai / 123456
+                    دخول بصلاحية مستخدم للعرض فقط
                   </p>
+
                 </div>
 
               </div>
+
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                disabled={loading || demoLoading}
+                className="
+                  mt-4
+                  w-full
+                  bg-white/[0.04]
+                  hover:bg-white/[0.07]
+                  border
+                  border-cyan-500/10
+                  hover:border-cyan-400/25
+                  transition
+                  rounded-2xl
+                  p-3.5
+                  font-bold
+                  text-cyan-300
+                  flex
+                  items-center
+                  justify-center
+                  gap-2
+                  disabled:opacity-60
+                  disabled:cursor-not-allowed
+                "
+              >
+                {demoLoading ? (
+                  <>
+                    <LoaderCircle size={18} className="animate-spin" />
+                    جاري الدخول...
+                  </>
+                ) : (
+                  <>
+                    <UserRound size={18} />
+                    دخول كمستخدم تجريبي
+                  </>
+                )}
+              </button>
 
             </div>
 
