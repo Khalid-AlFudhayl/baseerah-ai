@@ -17,12 +17,12 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#07111F',
           borderTopColor: 'rgba(34,211,238,0.12)',
-          height: 82,
+          height: 84,
           paddingTop: 8,
         },
 
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '800',
           marginTop: 4,
         },
@@ -36,7 +36,7 @@ export default function TabLayout() {
 
           tabBarIcon: ({ color }) => (
             <IconSymbol
-              size={26}
+              size={24}
               name="house.fill"
               color={color}
             />
@@ -51,7 +51,7 @@ export default function TabLayout() {
 
           tabBarIcon: ({ color }) => (
             <IconSymbol
-              size={26}
+              size={24}
               name="map.fill"
               color={color}
             />
@@ -66,8 +66,23 @@ export default function TabLayout() {
 
           tabBarIcon: ({ color }) => (
             <IconSymbol
-              size={26}
+              size={24}
               name="bell.fill"
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          title: 'التحليلات',
+
+          tabBarIcon: ({ color }) => (
+            <IconSymbol
+              size={24}
+              name="chart.bar.fill"
               color={color}
             />
           ),
@@ -81,7 +96,7 @@ export default function TabLayout() {
 
           tabBarIcon: ({ color }) => (
             <IconSymbol
-              size={26}
+              size={24}
               name="sparkles"
               color={color}
             />
@@ -96,7 +111,7 @@ export default function TabLayout() {
 
           tabBarIcon: ({ color }) => (
             <IconSymbol
-              size={26}
+              size={24}
               name="gearshape.fill"
               color={color}
             />

@@ -2,31 +2,44 @@ import { useEffect, useState } from 'react'
 
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
 
-import axios from 'axios'
-
-const API_URL = 'http://192.168.8.219:5000'
+import { apiGet } from '@/utils/baseerahApi'
 
 export default function AlertsScreen() {
   const [alerts, setAlerts] = useState<any[]>([])
+  const [cities, setCities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
   const fetchAlerts = async () => {
     try {
-      const response = await axios.get(`${API_URL}/alerts`)
+      setErrorMessage('')
 
-      if (Array.isArray(response.data)) {
-        setAlerts(response.data)
+      const [alertsData, citiesData] = await Promise.all([
+        apiGet('/alerts'),
+        apiGet('/cities'),
+      ])
+
+      if (Array.isArray(alertsData)) {
+        setAlerts(alertsData)
+      }
+
+      if (Array.isArray(citiesData)) {
+        setCities(citiesData)
       }
     } catch (error) {
       console.log(error)
+      setErrorMessage('تعذر تحميل التنبيهات. تأكد من اتصال الإنترنت ووجود حساب demo@baseerah.ai على Render.')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -40,26 +53,104 @@ export default function AlertsScreen() {
     return () => clearInterval(interval)
   }, [])
 
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchAlerts()
+  }
+
+  const normalize = (value: any) => {
+    return String(value || '').trim().toUpperCase()
+  }
+
+  const getAlertType = (alert: any) => {
+    const type = normalize(alert.alert_type)
+
+    if (type.includes('TRAFFIC')) return 'TRAFFIC'
+    if (type.includes('AIR')) return 'AIR'
+    if (type.includes('SECURITY')) return 'SECURITY'
+    if (type.includes('ENERGY')) return 'ENERGY'
+    if (type.includes('WATER')) return 'WATER'
+
+    return 'OTHER'
+  }
+
+  const getAlertTitle = (alert: any) => {
+    if (alert.title) return alert.title
+
+    const type = getAlertType(alert)
+
+    if (type === 'TRAFFIC') return 'تنبيه مروري'
+    if (type === 'AIR') return 'تنبيه جودة الهواء'
+    if (type === 'SECURITY') return 'تنبيه أمني'
+    if (type === 'ENERGY') return 'تنبيه الطاقة'
+    if (type === 'WATER') return 'تنبيه المياه'
+
+    return 'تنبيه تشغيلي'
+  }
+
+  const getAlertLevel = (alert: any) => {
+    const severity = normalize(alert.severity || alert.level)
+
+    if (severity.includes('CRITICAL')) return 'حرج'
+    if (severity.includes('HIGH')) return 'مرتفع'
+    if (severity.includes('MEDIUM')) return 'متوسط'
+    if (severity.includes('LOW')) return 'منخفض'
+
+    return 'متوسط'
+  }
+
+  const getRegionName = (alert: any) => {
+    const city = cities.find((item) => {
+      return Number(item.id) === Number(alert.region_id)
+    })
+
+    return city?.city || 'منطقة غير محددة'
+  }
+
   const getLevelColor = (level: string) => {
+    if (level === 'حرج') return '#DC2626'
     if (level === 'مرتفع') return '#EF4444'
     if (level === 'متوسط') return '#F59E0B'
     return '#22D3EE'
   }
 
   const getLevelIcon = (level: string) => {
+    if (level === 'حرج') return '●'
     if (level === 'مرتفع') return '●'
     if (level === 'متوسط') return '◆'
     return '•'
   }
 
-  const highCount = alerts.filter((item) => item.level === 'مرتفع').length
-  const mediumCount = alerts.filter((item) => item.level === 'متوسط').length
+  const formatTime = (createdAt: string) => {
+    if (!createdAt) return 'الآن'
+
+    return new Date(createdAt).toLocaleTimeString('ar-SA', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const highCount = alerts.filter((item) => {
+    const level = getAlertLevel(item)
+    return level === 'حرج' || level === 'مرتفع'
+  }).length
+
+  const mediumCount = alerts.filter((item) => {
+    return getAlertLevel(item) === 'متوسط'
+  }).length
 
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#22D3EE"
+        />
+      }
     >
       <View style={styles.redGlow} />
 
@@ -116,6 +207,18 @@ export default function AlertsScreen() {
             color="#22D3EE"
           />
         </View>
+      ) : errorMessage ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyIcon}>!</Text>
+
+          <Text style={styles.emptyTitle}>
+            تعذر تحميل التنبيهات
+          </Text>
+
+          <Text style={styles.emptyText}>
+            {errorMessage}
+          </Text>
+        </View>
       ) : alerts.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyIcon}>✓</Text>
@@ -130,7 +233,8 @@ export default function AlertsScreen() {
         </View>
       ) : (
         alerts.map((alert, index) => {
-          const color = getLevelColor(alert.level)
+          const level = getAlertLevel(alert)
+          const color = getLevelColor(level)
 
           return (
             <View
@@ -153,25 +257,29 @@ export default function AlertsScreen() {
                   ]}
                 >
                   <Text style={[styles.levelIcon, { color }]}>
-                    {getLevelIcon(alert.level)}
+                    {getLevelIcon(level)}
                   </Text>
 
                   <Text style={[styles.levelText, { color }]}>
-                    {alert.level}
+                    {level}
                   </Text>
                 </View>
 
                 <Text style={styles.alertTime}>
-                  {alert.time}
+                  {alert.time || formatTime(alert.created_at)}
                 </Text>
               </View>
 
+              <Text style={styles.regionText}>
+                {getRegionName(alert)}
+              </Text>
+
               <Text style={styles.alertTitle}>
-                {alert.title}
+                {getAlertTitle(alert)}
               </Text>
 
               <Text style={styles.alertDescription}>
-                {alert.description}
+                {alert.message || alert.description || 'لا توجد تفاصيل للتنبيه'}
               </Text>
 
               <View style={styles.alertFooter}>
@@ -304,6 +412,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '900',
     marginTop: 12,
+    textAlign: 'center',
   },
 
   emptyText: {
@@ -326,7 +435,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
 
   levelBadge: {
@@ -353,6 +462,14 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 12,
     fontWeight: '700',
+  },
+
+  regionText: {
+    color: '#22D3EE',
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'right',
+    marginBottom: 8,
   },
 
   alertTitle: {

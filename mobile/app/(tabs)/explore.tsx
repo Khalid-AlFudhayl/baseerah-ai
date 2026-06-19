@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,11 +10,14 @@ import {
 } from 'react-native'
 
 import MapView, { Callout, Marker } from 'react-native-maps'
-import axios from 'axios'
 import { io } from 'socket.io-client'
 
-const API_URL = 'http://192.168.8.219:5000'
-const socket = io(API_URL)
+import { API_URL, apiGet } from '@/utils/baseerahApi'
+
+const socket = io(API_URL, {
+  transports: ['websocket', 'polling'],
+  reconnection: true,
+})
 
 const zoneCoordinates: any = {
   'وسط أبها': {
@@ -41,18 +45,24 @@ const zoneCoordinates: any = {
 export default function ExploreScreen() {
   const [cities, setCities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
   const fetchCities = async () => {
     try {
-      const response = await axios.get(`${API_URL}/cities`)
+      setErrorMessage('')
 
-      if (Array.isArray(response.data)) {
-        setCities(response.data)
+      const citiesData = await apiGet('/cities')
+
+      if (Array.isArray(citiesData)) {
+        setCities(citiesData)
       }
     } catch (error) {
       console.log(error)
+      setErrorMessage('تعذر تحميل بيانات المدن. تأكد من الاتصال بالإنترنت.')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -70,29 +80,105 @@ export default function ExploreScreen() {
     }
   }, [])
 
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchCities()
+  }
+
+  const getNumber = (value: any) => {
+    return Number(String(value).replace('%', '')) || 0
+  }
+
   const getStatusColor = (status: string) => {
     if (status === 'مستقر') return '#4ADE80'
     if (status === 'نشط') return '#FACC15'
     if (status === 'مزدحم') return '#FB923C'
+
     return '#22D3EE'
   }
+
+  const getStatusLabel = (city: any) => {
+    if (city.status) return city.status
+
+    const traffic = getNumber(city.traffic)
+
+    if (traffic >= 80) return 'مزدحم'
+    if (traffic >= 60) return 'نشط'
+
+    return 'مستقر'
+  }
+
+  const stableCount = cities.filter((city) => {
+    return getStatusLabel(city) === 'مستقر'
+  }).length
+
+  const activeCount = cities.filter((city) => {
+    return getStatusLabel(city) === 'نشط'
+  }).length
+
+  const crowdedCount = cities.filter((city) => {
+    return getStatusLabel(city) === 'مزدحم'
+  }).length
 
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#22D3EE"
+        />
+      }
     >
       <View style={styles.glowCircle} />
+      <View style={styles.glowCircleTwo} />
 
       <View style={styles.headerCard}>
-        <Text style={styles.badge}>REAL SMART MAP</Text>
+        <View style={styles.headerTopRow}>
+          <View>
+            <Text style={styles.badge}>BASEERAH LIVE MAP</Text>
 
-        <Text style={styles.title}>المدن الذكية</Text>
+            <Text style={styles.title}>المدن والمناطق</Text>
+          </View>
+
+          <View style={styles.liveBadge}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>مباشر</Text>
+          </View>
+        </View>
 
         <Text style={styles.subtitle}>
-          خريطة تشغيلية حقيقية لمراقبة مناطق أبها المرتبطة بمنصة بصيرة.
+          خريطة تشغيلية لمراقبة مناطق أبها وربط المؤشرات الحضرية ببيانات منصة بصيرة.
         </Text>
+
+        <View style={styles.summaryRow}>
+          <SummaryBox
+            label="المناطق"
+            value={cities.length}
+            color="#22D3EE"
+          />
+
+          <SummaryBox
+            label="مستقرة"
+            value={stableCount}
+            color="#4ADE80"
+          />
+
+          <SummaryBox
+            label="نشطة"
+            value={activeCount}
+            color="#FACC15"
+          />
+
+          <SummaryBox
+            label="مزدحمة"
+            value={crowdedCount}
+            color="#FB923C"
+          />
+        </View>
       </View>
 
       <View style={styles.mapContainer}>
@@ -110,7 +196,8 @@ export default function ExploreScreen() {
               zoneCoordinates[city.city] ||
               Object.values(zoneCoordinates)[index % 5]
 
-            const color = getStatusColor(city.status)
+            const status = getStatusLabel(city)
+            const color = getStatusColor(status)
 
             return (
               <Marker
@@ -146,7 +233,7 @@ export default function ExploreScreen() {
                     </Text>
 
                     <Text style={[styles.calloutStatus, { color }]}>
-                      {city.status}
+                      {status}
                     </Text>
 
                     <Text style={styles.calloutText}>
@@ -154,7 +241,15 @@ export default function ExploreScreen() {
                     </Text>
 
                     <Text style={styles.calloutText}>
+                      الهواء: {city.air}
+                    </Text>
+
+                    <Text style={styles.calloutText}>
                       الطاقة: {city.energy}
+                    </Text>
+
+                    <Text style={styles.calloutText}>
+                      المياه: {city.water}
                     </Text>
 
                     <Text style={styles.calloutText}>
@@ -183,57 +278,113 @@ export default function ExploreScreen() {
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#22D3EE" />
         </View>
+      ) : errorMessage ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyIcon}>!</Text>
+
+          <Text style={styles.emptyTitle}>
+            تعذر تحميل المناطق
+          </Text>
+
+          <Text style={styles.emptyText}>
+            {errorMessage}
+          </Text>
+        </View>
+      ) : cities.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyIcon}>✓</Text>
+
+          <Text style={styles.emptyTitle}>
+            لا توجد مناطق مسجلة
+          </Text>
+
+          <Text style={styles.emptyText}>
+            لم يتم العثور على بيانات مناطق حالية.
+          </Text>
+        </View>
       ) : (
-        cities.map((city, index) => (
-          <View key={city.id || index} style={styles.cityCard}>
-            <View style={styles.cityTopRow}>
-              <View
-                style={[
-                  styles.statusBadge,
-                  {
-                    backgroundColor: `${getStatusColor(city.status)}20`,
-                  },
-                ]}
-              >
+        cities.map((city, index) => {
+          const status = getStatusLabel(city)
+          const statusColor = getStatusColor(status)
+
+          return (
+            <View key={city.id || index} style={styles.cityCard}>
+              <View style={styles.cityTopRow}>
                 <View
                   style={[
-                    styles.statusDot,
+                    styles.statusBadge,
                     {
-                      backgroundColor: getStatusColor(city.status),
-                    },
-                  ]}
-                />
-
-                <Text
-                  style={[
-                    styles.statusText,
-                    {
-                      color: getStatusColor(city.status),
+                      backgroundColor: `${statusColor}20`,
+                      borderColor: `${statusColor}40`,
                     },
                   ]}
                 >
-                  {city.status}
-                </Text>
+                  <View
+                    style={[
+                      styles.statusDot,
+                      {
+                        backgroundColor: statusColor,
+                      },
+                    ]}
+                  />
+
+                  <Text
+                    style={[
+                      styles.statusText,
+                      {
+                        color: statusColor,
+                      },
+                    ]}
+                  >
+                    {status}
+                  </Text>
+                </View>
+
+                <Text style={styles.cityName}>{city.city}</Text>
               </View>
 
-              <Text style={styles.cityName}>{city.city}</Text>
-            </View>
+              <View style={styles.metricsGrid}>
+                <Metric label="المرور" value={city.traffic} color="#FB923C" />
+                <Metric label="الهواء" value={city.air} color="#22D3EE" />
+                <Metric label="الطاقة" value={city.energy} color="#FACC15" />
+                <Metric label="المياه" value={city.water} color="#60A5FA" />
+              </View>
 
-            <View style={styles.metricsGrid}>
-              <Metric label="المرور" value={city.traffic} color="#FB923C" />
-              <Metric label="الهواء" value={city.air} color="#22D3EE" />
-              <Metric label="الطاقة" value={city.energy} color="#FACC15" />
-              <Metric label="المياه" value={city.water} color="#60A5FA" />
-            </View>
+              <View style={styles.securityCard}>
+                <View>
+                  <Text style={styles.securityLabel}>مؤشر السلامة</Text>
+                  <Text style={styles.securityHint}>متابعة تشغيلية مباشرة</Text>
+                </View>
 
-            <View style={styles.securityCard}>
-              <Text style={styles.securityLabel}>مؤشر السلامة</Text>
-              <Text style={styles.securityValue}>{city.security}</Text>
+                <Text style={styles.securityValue}>{city.security}</Text>
+              </View>
             </View>
-          </View>
-        ))
+          )
+        })
       )}
     </ScrollView>
+  )
+}
+
+function SummaryBox({
+  label,
+  value,
+  color,
+}: {
+  label: string
+  value: number
+  color: string
+}) {
+  return (
+    <View style={styles.summaryBox}>
+      <Text style={[styles.summaryValue, { color }]}>
+        {value}
+      </Text>
+
+      <Text style={styles.summaryLabel}>
+        {label}
+      </Text>
+    </View>
   )
 }
 
@@ -246,10 +397,30 @@ function Metric({
   value: string
   color: string
 }) {
+  const progress = Math.min(
+    100,
+    Number(String(value).replace('%', '')) || 0
+  )
+
   return (
     <View style={styles.metricCard}>
       <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={[styles.metricValue, { color }]}>{value}</Text>
+
+      <Text style={[styles.metricValue, { color }]}>
+        {value}
+      </Text>
+
+      <View style={[styles.metricBar, { backgroundColor: `${color}22` }]}>
+        <View
+          style={[
+            styles.metricFill,
+            {
+              backgroundColor: color,
+              width: `${progress}%`,
+            },
+          ]}
+        />
+      </View>
     </View>
   )
 }
@@ -291,6 +462,16 @@ const styles = StyleSheet.create({
     right: -70,
   },
 
+  glowCircleTwo: {
+    position: 'absolute',
+    width: 240,
+    height: 240,
+    borderRadius: 999,
+    backgroundColor: 'rgba(74,222,128,0.05)',
+    top: 420,
+    left: -90,
+  },
+
   headerCard: {
     backgroundColor: 'rgba(11,18,32,0.92)',
     borderRadius: 28,
@@ -300,17 +481,24 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
+  headerTopRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+
   badge: {
     color: '#22D3EE',
     fontSize: 10,
-    letterSpacing: 4,
+    letterSpacing: 3,
     marginBottom: 12,
     textAlign: 'right',
   },
 
   title: {
     color: '#FFFFFF',
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: '900',
     textAlign: 'right',
   },
@@ -319,8 +507,62 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 13,
     lineHeight: 24,
-    marginTop: 10,
+    marginTop: 12,
     textAlign: 'right',
+  },
+
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(74,222,128,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(74,222,128,0.22)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: '#4ADE80',
+  },
+
+  liveText: {
+    color: '#4ADE80',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+
+  summaryRow: {
+    flexDirection: 'row-reverse',
+    gap: 10,
+    marginTop: 18,
+  },
+
+  summaryBox: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.78)',
+    borderRadius: 18,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+
+  summaryValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+
+  summaryLabel: {
+    color: '#64748B',
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 4,
+    textAlign: 'center',
   },
 
   mapContainer: {
@@ -392,7 +634,7 @@ const styles = StyleSheet.create({
   },
 
   calloutCard: {
-    width: 180,
+    width: 190,
     backgroundColor: '#0F172A',
     borderRadius: 18,
     padding: 14,
@@ -458,6 +700,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  emptyCard: {
+    backgroundColor: 'rgba(15,23,42,0.88)',
+    borderRadius: 28,
+    padding: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(74,222,128,0.18)',
+  },
+
+  emptyIcon: {
+    color: '#4ADE80',
+    fontSize: 42,
+    fontWeight: '900',
+  },
+
+  emptyTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+
+  emptyText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    marginTop: 10,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+
   cityCard: {
     backgroundColor: 'rgba(15,23,42,0.88)',
     borderRadius: 28,
@@ -476,10 +749,10 @@ const styles = StyleSheet.create({
 
   cityName: {
     color: '#FFFFFF',
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '900',
     textAlign: 'right',
-    maxWidth: '60%',
+    maxWidth: '62%',
   },
 
   statusBadge: {
@@ -489,6 +762,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: 16,
+    borderWidth: 1,
   },
 
   statusDot: {
@@ -531,6 +805,19 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
+  metricBar: {
+    width: '100%',
+    height: 6,
+    borderRadius: 999,
+    marginTop: 12,
+    overflow: 'hidden',
+  },
+
+  metricFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+
   securityCard: {
     backgroundColor: '#07111F',
     borderRadius: 22,
@@ -546,7 +833,15 @@ const styles = StyleSheet.create({
   securityLabel: {
     color: '#CBD5E1',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
+    textAlign: 'right',
+  },
+
+  securityHint: {
+    color: '#64748B',
+    fontSize: 11,
+    marginTop: 4,
+    textAlign: 'right',
   },
 
   securityValue: {

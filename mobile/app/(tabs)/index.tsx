@@ -4,91 +4,215 @@ import {
   ActivityIndicator,
   Dimensions,
   ImageBackground,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
 
-import axios from 'axios'
 import { io } from 'socket.io-client'
 import { LineChart } from 'react-native-chart-kit'
 
-const API_URL = 'http://192.168.8.219:5000'
-const socket = io(API_URL)
+import { API_URL, apiGet } from '@/utils/baseerahApi'
+
+const socket = io(API_URL, {
+  transports: ['websocket', 'polling'],
+  reconnection: true,
+})
+
 const screenWidth = Dimensions.get('window').width
 
 export default function HomeScreen() {
   const [stats, setStats] = useState<any[]>([])
+  const [alerts, setAlerts] = useState<any[]>([])
+  const [recommendations, setRecommendations] = useState<any[]>([])
+  const [cities, setCities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [trafficData, setTrafficData] = useState([55, 62, 58, 70, 66, 74])
+  const [healthScore, setHealthScore] = useState(0)
 
   const getNumber = (value: any) => {
     return Number(String(value).replace('%', '')) || 0
   }
 
-  const updateStatsFromCities = (cities: any[]) => {
-    if (!Array.isArray(cities) || cities.length === 0) return
+  const getAverage = (items: any[], key: string) => {
+    if (!Array.isArray(items) || items.length === 0) return 0
 
-    const trafficAverage = Math.floor(
-      cities.reduce((sum: number, city: any) => sum + getNumber(city.traffic), 0) / cities.length
+    return Math.floor(
+      items.reduce((sum: number, item: any) => {
+        return sum + getNumber(item[key])
+      }, 0) / items.length
     )
+  }
 
-    const airAverage = Math.floor(
-      cities.reduce((sum: number, city: any) => sum + getNumber(city.air), 0) / cities.length
-    )
+  const updateStatsFromCities = (cityData: any[]) => {
+    if (!Array.isArray(cityData) || cityData.length === 0) return
 
-    const energyAverage = Math.floor(
-      cities.reduce((sum: number, city: any) => sum + getNumber(city.energy), 0) / cities.length
-    )
+    const trafficAverage = getAverage(cityData, 'traffic')
+    const airAverage = getAverage(cityData, 'air')
+    const energyAverage = getAverage(cityData, 'energy')
+    const waterAverage = getAverage(cityData, 'water')
+    const securityAverage = getAverage(cityData, 'security')
 
-    const waterAverage = Math.floor(
-      cities.reduce((sum: number, city: any) => sum + getNumber(city.water), 0) / cities.length
-    )
+    setCities(cityData)
+    setHealthScore(securityAverage)
 
     setStats([
-      { title: 'الهواء', value: `${airAverage}`, color: '#22D3EE' },
-      { title: 'المرور', value: `${trafficAverage}%`, color: '#FB923C' },
-      { title: 'الطاقة', value: `${energyAverage}%`, color: '#FACC15' },
-      { title: 'المياه', value: `${waterAverage}%`, color: '#60A5FA' },
+      {
+        title: 'جودة الهواء',
+        value: `${airAverage}`,
+        progress: airAverage,
+        color: '#22D3EE',
+      },
+      {
+        title: 'حركة المرور',
+        value: `${trafficAverage}%`,
+        progress: trafficAverage,
+        color: '#FB923C',
+      },
+      {
+        title: 'الطاقة',
+        value: `${energyAverage}%`,
+        progress: energyAverage,
+        color: '#FACC15',
+      },
+      {
+        title: 'المياه',
+        value: `${waterAverage}%`,
+        progress: waterAverage,
+        color: '#60A5FA',
+      },
     ])
 
     setTrafficData((prev) => {
       const updated = [...prev, trafficAverage]
-      if (updated.length > 7) updated.shift()
+
+      if (updated.length > 7) {
+        updated.shift()
+      }
+
       return updated
     })
-
-    setLoading(false)
   }
 
-  const fetchCities = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const response = await axios.get(`${API_URL}/cities`)
-      updateStatsFromCities(response.data)
+      const [citiesData, alertsData, recommendationsData] = await Promise.all([
+        apiGet('/cities'),
+        apiGet('/alerts'),
+        apiGet('/ai-recommendations'),
+      ])
+
+      if (Array.isArray(citiesData)) {
+        updateStatsFromCities(citiesData)
+      }
+
+      if (Array.isArray(alertsData)) {
+        setAlerts(alertsData)
+      }
+
+      if (Array.isArray(recommendationsData)) {
+        setRecommendations(recommendationsData)
+      }
     } catch (error) {
       console.log(error)
+    } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
   useEffect(() => {
-    fetchCities()
+    fetchDashboardData()
 
-    socket.on('cities:update', (cities) => {
-      updateStatsFromCities(cities)
+    socket.on('cities:update', (liveCities) => {
+      updateStatsFromCities(liveCities)
+    })
+
+    socket.on('alerts:update', (liveAlerts) => {
+      setAlerts(liveAlerts || [])
     })
 
     return () => {
       socket.off('cities:update')
+      socket.off('alerts:update')
     }
   }, [])
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchDashboardData()
+  }
+
+  const normalize = (value: any) => {
+    return String(value || '').trim().toUpperCase()
+  }
+
+  const getAlertTypeName = (alert: any) => {
+    const type = normalize(alert.alert_type)
+
+    if (type.includes('TRAFFIC')) return 'تنبيه مروري'
+    if (type.includes('AIR')) return 'تنبيه جودة الهواء'
+    if (type.includes('ENERGY')) return 'تنبيه الطاقة'
+    if (type.includes('WATER')) return 'تنبيه المياه'
+    if (type.includes('SECURITY')) return 'تنبيه أمني'
+
+    return 'تنبيه تشغيلي'
+  }
+
+  const getAlertColor = (alert: any) => {
+    const severity = normalize(alert.severity || alert.level)
+
+    if (severity.includes('CRITICAL') || severity.includes('HIGH')) {
+      return '#FB923C'
+    }
+
+    if (severity.includes('MEDIUM')) {
+      return '#FACC15'
+    }
+
+    return '#22D3EE'
+  }
+
+  const getRegionName = (alert: any) => {
+    const city = cities.find((item) => {
+      return Number(item.id) === Number(alert.region_id)
+    })
+
+    return city?.city || 'منطقة غير محددة'
+  }
+
+  const latestAlerts = alerts.slice(0, 3)
+  const latestRecommendation = recommendations[0]?.recommendation
+
+  const healthStatus =
+    healthScore >= 85
+      ? 'Excellent'
+      : healthScore >= 70
+        ? 'Stable'
+        : 'Needs Review'
+
+  const healthArabicStatus =
+    healthScore >= 85
+      ? 'ممتاز'
+      : healthScore >= 70
+        ? 'مستقر'
+        : 'يحتاج متابعة'
 
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#22D3EE"
+        />
+      }
     >
       <View style={styles.glowCircle} />
       <View style={styles.glowCircleTwo} />
@@ -99,18 +223,18 @@ export default function HomeScreen() {
         imageStyle={styles.heroImageStyle}
       >
         <View style={styles.heroOverlay}>
-          <Text style={styles.badge}>SMART CITY CONTROL</Text>
+          <Text style={styles.badge}>BASEERAH AI</Text>
 
-          <Text style={styles.title}>بصيرة</Text>
+          <Text style={styles.title}>أبها</Text>
 
           <Text style={styles.subtitle}>
-            منصة تشغيل وتحليل المدن الذكية المدعومة بالذكاء الاصطناعي.
+            منصة ذكاء اصطناعي وتوأم رقمي لمراقبة المؤشرات الحضرية وتحليل البيانات التشغيلية.
           </Text>
 
           <View style={styles.liveRow}>
             <View style={styles.liveBadge}>
               <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
+              <Text style={styles.liveText}>مباشر</Text>
             </View>
 
             <View style={styles.liveBadge}>
@@ -134,13 +258,20 @@ export default function HomeScreen() {
                 {item.value}
               </Text>
 
-              <View style={[styles.progressBar, { backgroundColor: `${item.color}25` }]}>
+              <View
+                style={[
+                  styles.progressBar,
+                  {
+                    backgroundColor: `${item.color}25`,
+                  },
+                ]}
+              >
                 <View
                   style={[
                     styles.progressFill,
                     {
                       backgroundColor: item.color,
-                      width: item.value,
+                      width: `${Math.min(item.progress, 100)}%`,
                     },
                   ]}
                 />
@@ -150,19 +281,84 @@ export default function HomeScreen() {
         </View>
       )}
 
+      <View style={styles.aiCardFeatured}>
+        <View style={styles.cardHeaderRow}>
+          <View>
+            <Text style={styles.aiTitle}>توصية بصيرة</Text>
+            <Text style={styles.aiSubTitle}>آخر توصية تشغيلية من الذكاء الاصطناعي</Text>
+          </View>
+
+          <View style={styles.aiBadge}>
+            <Text style={styles.aiBadgeText}>AI</Text>
+          </View>
+        </View>
+
+        <Text style={styles.aiText}>
+          {latestRecommendation ||
+            'لا توجد توصية AI محفوظة حاليًا. سيتم عرض التوصيات بعد تحديث التحليل الذكي.'}
+        </Text>
+      </View>
+
+      <View style={styles.alertCard}>
+        <View style={styles.cardHeaderRow}>
+          <View>
+            <Text style={styles.alertTitle}>آخر التنبيهات</Text>
+            <Text style={styles.alertSubTitle}>أحدث الحالات التشغيلية</Text>
+          </View>
+
+          <Text style={styles.alertCount}>{latestAlerts.length}</Text>
+        </View>
+
+        {latestAlerts.length === 0 ? (
+          <Text style={styles.emptyTextSmall}>
+            لا توجد تنبيهات حالية.
+          </Text>
+        ) : (
+          latestAlerts.map((alert, index) => (
+            <View key={alert.id || index} style={styles.alertRow}>
+              <Text
+                style={[
+                  styles.alertDot,
+                  {
+                    color: getAlertColor(alert),
+                  },
+                ]}
+              >
+                ●
+              </Text>
+
+              <Text style={styles.alertItem}>
+                {getAlertTypeName(alert)} - {getRegionName(alert)}
+              </Text>
+            </View>
+          ))
+        )}
+      </View>
+
       <View style={styles.healthCard}>
         <Text style={styles.healthLabel}>CITY HEALTH SCORE</Text>
 
-        <Text style={styles.healthValue}>92</Text>
+        <Text style={styles.healthValue}>
+          {healthScore || 0}
+        </Text>
 
-        <Text style={styles.healthStatus}>Excellent</Text>
+        <Text style={styles.healthStatus}>
+          {healthStatus}
+        </Text>
 
         <View style={styles.healthBar}>
-          <View style={styles.healthFill} />
+          <View
+            style={[
+              styles.healthFill,
+              {
+                width: `${healthScore || 0}%`,
+              },
+            ]}
+          />
         </View>
 
         <Text style={styles.healthText}>
-          الحالة التشغيلية العامة مستقرة، مع مراقبة مستمرة لحركة المرور والطاقة.
+          مؤشر السلامة الحالي: {healthArabicStatus}. يتم احتسابه من متوسط مؤشرات السلامة في المناطق.
         </Text>
       </View>
 
@@ -178,7 +374,7 @@ export default function HomeScreen() {
             datasets: [{ data: trafficData }],
           }}
           width={screenWidth - 70}
-          height={240}
+          height={220}
           chartConfig={{
             backgroundGradientFrom: '#0F172A',
             backgroundGradientTo: '#0F172A',
@@ -186,7 +382,7 @@ export default function HomeScreen() {
             color: () => '#22D3EE',
             labelColor: () => '#64748B',
             propsForDots: {
-              r: '5',
+              r: '4',
               strokeWidth: '2',
               stroke: '#22D3EE',
             },
@@ -194,33 +390,6 @@ export default function HomeScreen() {
           bezier
           style={styles.chart}
         />
-      </View>
-
-      <View style={styles.alertCard}>
-        <Text style={styles.alertTitle}>آخر التنبيهات</Text>
-
-        <View style={styles.alertRow}>
-          <Text style={styles.alertDot}>●</Text>
-          <Text style={styles.alertItem}>ازدحام مروري - طريق الملك فهد</Text>
-        </View>
-
-        <View style={styles.alertRow}>
-          <Text style={[styles.alertDot, { color: '#FACC15' }]}>●</Text>
-          <Text style={styles.alertItem}>ارتفاع استهلاك الطاقة</Text>
-        </View>
-
-        <View style={styles.alertRow}>
-          <Text style={[styles.alertDot, { color: '#22D3EE' }]}>●</Text>
-          <Text style={styles.alertItem}>تحسن جودة الهواء</Text>
-        </View>
-      </View>
-
-      <View style={styles.aiCard}>
-        <Text style={styles.aiTitle}>توصية بصيرة</Text>
-
-        <Text style={styles.aiText}>
-          يوصي النظام بمراقبة طريق الملك فهد خلال ساعات الذروة القادمة بسبب ارتفاع الكثافة المرورية مقارنة بالمناطق الأخرى.
-        </Text>
       </View>
     </ScrollView>
   )
@@ -262,7 +431,7 @@ const styles = StyleSheet.create({
     height: 285,
     borderRadius: 36,
     overflow: 'hidden',
-    marginBottom: 26,
+    marginBottom: 24,
     borderWidth: 1,
     borderColor: 'rgba(34,211,238,0.22)',
     shadowColor: '#22D3EE',
@@ -395,12 +564,131 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
 
+  aiCardFeatured: {
+    backgroundColor: 'rgba(7,17,31,0.94)',
+    borderRadius: 32,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.22)',
+    marginTop: 24,
+    shadowColor: '#22D3EE',
+    shadowOpacity: 0.16,
+    shadowRadius: 22,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    elevation: 12,
+  },
+
+  cardHeaderRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+
+  aiTitle: {
+    color: '#22D3EE',
+    fontSize: 22,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+
+  aiSubTitle: {
+    color: '#64748B',
+    fontSize: 12,
+    marginTop: 5,
+    textAlign: 'right',
+  },
+
+  aiBadge: {
+    width: 46,
+    height: 46,
+    borderRadius: 18,
+    backgroundColor: 'rgba(34,211,238,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  aiBadgeText: {
+    color: '#22D3EE',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+
+  aiText: {
+    color: '#CBD5E1',
+    fontSize: 14,
+    lineHeight: 28,
+    textAlign: 'right',
+  },
+
+  alertCard: {
+    backgroundColor: 'rgba(15,23,42,0.90)',
+    borderRadius: 30,
+    padding: 22,
+    marginTop: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(251,146,60,0.18)',
+  },
+
+  alertTitle: {
+    color: '#FB923C',
+    fontSize: 21,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+
+  alertSubTitle: {
+    color: '#64748B',
+    fontSize: 12,
+    marginTop: 5,
+    textAlign: 'right',
+  },
+
+  alertCount: {
+    color: '#FB923C',
+    fontSize: 30,
+    fontWeight: '900',
+  },
+
+  alertRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+
+  alertDot: {
+    color: '#FB923C',
+    fontSize: 12,
+  },
+
+  alertItem: {
+    color: '#E2E8F0',
+    fontSize: 14,
+    lineHeight: 25,
+    textAlign: 'right',
+    flex: 1,
+  },
+
+  emptyTextSmall: {
+    color: '#94A3B8',
+    fontSize: 13,
+    lineHeight: 24,
+    textAlign: 'right',
+  },
+
   healthCard: {
     backgroundColor: 'rgba(7,17,31,0.92)',
     borderRadius: 34,
     padding: 24,
     alignItems: 'center',
-    marginTop: 26,
+    marginTop: 22,
     borderWidth: 1,
     borderColor: 'rgba(74,222,128,0.20)',
     shadowColor: '#4ADE80',
@@ -422,7 +710,7 @@ const styles = StyleSheet.create({
 
   healthValue: {
     color: '#FFFFFF',
-    fontSize: 72,
+    fontSize: 68,
     fontWeight: '900',
     marginTop: 8,
   },
@@ -444,7 +732,6 @@ const styles = StyleSheet.create({
   },
 
   healthFill: {
-    width: '92%',
     height: '100%',
     borderRadius: 999,
     backgroundColor: '#4ADE80',
@@ -464,7 +751,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: 'rgba(34,211,238,0.12)',
-    marginTop: 26,
+    marginTop: 22,
     shadowColor: '#22D3EE',
     shadowOpacity: 0.16,
     shadowRadius: 22,
@@ -496,74 +783,5 @@ const styles = StyleSheet.create({
   chart: {
     borderRadius: 24,
     marginTop: 12,
-  },
-
-  alertCard: {
-    backgroundColor: 'rgba(15,23,42,0.90)',
-    borderRadius: 30,
-    padding: 22,
-    marginTop: 26,
-    borderWidth: 1,
-    borderColor: 'rgba(251,146,60,0.18)',
-  },
-
-  alertTitle: {
-    color: '#FB923C',
-    fontSize: 21,
-    fontWeight: '900',
-    textAlign: 'right',
-    marginBottom: 16,
-  },
-
-  alertRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-  },
-
-  alertDot: {
-    color: '#FB923C',
-    fontSize: 12,
-  },
-
-  alertItem: {
-    color: '#E2E8F0',
-    fontSize: 14,
-    lineHeight: 25,
-    textAlign: 'right',
-    flex: 1,
-  },
-
-  aiCard: {
-    backgroundColor: 'rgba(7,17,31,0.90)',
-    borderRadius: 34,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.14)',
-    marginTop: 26,
-    shadowColor: '#22D3EE',
-    shadowOpacity: 0.14,
-    shadowRadius: 20,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    elevation: 10,
-  },
-
-  aiTitle: {
-    color: '#22D3EE',
-    fontSize: 22,
-    fontWeight: '900',
-    textAlign: 'right',
-  },
-
-  aiText: {
-    color: '#CBD5E1',
-    fontSize: 14,
-    lineHeight: 28,
-    marginTop: 12,
-    textAlign: 'right',
   },
 })

@@ -1,131 +1,175 @@
 import {
+  Linking,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
 
-const API_URL = 'http://192.168.8.219:5000'
+const WEB_DASHBOARD_URL = 'https://baseerah-ai-ten.vercel.app'
 
 export default function SettingsScreen() {
+  const openWebDashboard = async () => {
+    try {
+      await Linking.openURL(WEB_DASHBOARD_URL)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.glowBlue} />
-      <View style={styles.glowGreen} />
+      <View style={styles.glowCircle} />
+      <View style={styles.glowCircleTwo} />
 
-      <View style={styles.heroCard}>
-        <Text style={styles.badge}>SYSTEM CONTROL</Text>
+      <View style={styles.headerCard}>
+        <Text style={styles.badge}>
+          BASEERAH SETTINGS
+        </Text>
 
-        <Text style={styles.title}>مركز التحكم</Text>
+        <Text style={styles.title}>
+          الإعدادات
+        </Text>
 
         <Text style={styles.subtitle}>
-          إدارة منصة بصيرة ومراقبة حالة الأنظمة والخدمات الذكية.
+          معلومات عامة عن تطبيق بصيرة وطريقة استخدام لوحة الويب لإدارة النظام.
         </Text>
       </View>
 
-      <View style={styles.statusGrid}>
-        <ControlCard title="النظام" value="متصل" color="#4ADE80" />
-        <ControlCard title="الذكاء" value="نشط" color="#FACC15" />
-        <ControlCard title="الويب" value="متصل" color="#22D3EE" />
-        <ControlCard title="الجوال" value="جاهز" color="#60A5FA" />
-      </View>
+      <View style={styles.infoCard}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.iconBox}>
+            <Text style={styles.iconText}>↻</Text>
+          </View>
 
-      <View style={styles.projectCard}>
-        <Text style={styles.projectBadge}>BASEERAH AI</Text>
+          <View style={styles.headerTextWrapper}>
+            <Text style={styles.cardTitle}>
+              تحديث الصفحات
+            </Text>
 
-        <Text style={styles.projectTitle}>
-          Smart City Digital Twin
-        </Text>
-
-        <Text style={styles.projectText}>
-          Abha Smart City Platform
-        </Text>
-
-        <View style={styles.projectMeta}>
-          <Text style={styles.metaText}>King Khalid University</Text>
-          <Text style={styles.metaText}>Version 1.0</Text>
+            <Text style={styles.cardDescription}>
+              يمكن تحديث صفحات التطبيق بالسحب للأسفل عند الحاجة.
+            </Text>
+          </View>
         </View>
       </View>
 
-      <View style={styles.developerCard}>
-        <Text style={styles.sectionLabel}>المطور</Text>
+      <View style={styles.infoCard}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.iconBox}>
+            <Text style={styles.iconText}>👁</Text>
+          </View>
 
-        <Text style={styles.developerName}>
-          Khalid AlFudhayl
-        </Text>
+          <View style={styles.headerTextWrapper}>
+            <Text style={styles.cardTitle}>
+              دور تطبيق الجوال
+            </Text>
 
-        <Text style={styles.developerRole}>
-          System Administrator
-        </Text>
-
-        <Text style={styles.developerInfo}>
-          Computer Science · King Khalid University
-        </Text>
-      </View>
-
-      <View style={styles.techCard}>
-        <Text style={styles.sectionLabel}>التقنيات</Text>
-
-        <View style={styles.chips}>
-          <Chip label="Backend API" />
-          <Chip label="PostgreSQL" />
-          <Chip label="Socket.IO" />
-          <Chip label="Expo" />
-          <Chip label="React Native" />
-          <Chip label="EAS Build" />
-          <Chip label="Baseerah Copilot" />
+            <Text style={styles.cardDescription}>
+              تطبيق الجوال مخصص للمتابعة والعرض السريع للمؤشرات، التنبيهات، التحليلات، وتوصيات الذكاء الاصطناعي.
+            </Text>
+          </View>
         </View>
       </View>
 
-      <View style={styles.infoBox}>
-        <Text style={styles.infoTitle}>تكامل المنصة</Text>
+      <View style={styles.warningCard}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.warningIconBox}>
+            <Text style={styles.warningIconText}>!</Text>
+          </View>
 
-        <Text style={styles.infoText}>
-          منصة بصيرة تجمع بين لوحة التحكم وتطبيق الجوال ومحرك الذكاء الاصطناعي
-          ضمن بيئة تشغيل موحدة لمراقبة المدن الذكية وتحليل المؤشرات التشغيلية
-          بشكل لحظي.
+          <View style={styles.headerTextWrapper}>
+            <Text style={styles.warningTitle}>
+              إدارة البيانات
+            </Text>
+
+            <Text style={styles.cardDescription}>
+              إضافة المناطق وتعديلها وحذفها تتم من لوحة الويب فقط حسب صلاحيات المستخدم.
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.warningCard}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.warningIconBox}>
+            <Text style={styles.warningIconText}>A</Text>
+          </View>
+
+          <View style={styles.headerTextWrapper}>
+            <Text style={styles.warningTitle}>
+              إدارة المستخدمين
+            </Text>
+
+            <Text style={styles.cardDescription}>
+              قائمة المستخدمين والصلاحيات متاحة من لوحة الويب لحساب المدير Admin فقط.
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.webCard}>
+        <Text style={styles.webTitle}>
+          لوحة الويب
         </Text>
 
-        <Text style={styles.apiText}>
-          {API_URL}
+        <Text style={styles.webDescription}>
+          للانتقال إلى لوحة التحكم الكاملة وإدارة النظام، اضغط الزر التالي.
         </Text>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.webButton,
+            pressed && styles.webButtonPressed,
+          ]}
+          onPress={openWebDashboard}
+        >
+          <Text style={styles.webButtonText}>
+            فتح لوحة الويب
+          </Text>
+        </Pressable>
+
+        <Text style={styles.webUrl}>
+          {WEB_DASHBOARD_URL}
+        </Text>
+      </View>
+
+      <View style={styles.systemCard}>
+        <Text style={styles.sectionTitle}>
+          معلومات النظام
+        </Text>
+
+        <InfoRow label="اسم المشروع" value="Baseerah AI" />
+        <InfoRow label="المدينة الأساسية" value="Abha" />
+        <InfoRow label="نوع التطبيق" value="Smart City Monitoring" />
+        <InfoRow label="المطور" value="Khalid AlFudhayl" />
+        <InfoRow label="حالة الربط" value="Render + Neon + Vercel" />
       </View>
     </ScrollView>
   )
 }
 
-function ControlCard({
-  title,
+function InfoRow({
+  label,
   value,
-  color,
 }: {
-  title: string
+  label: string
   value: string
-  color: string
 }) {
   return (
-    <View style={styles.controlCard}>
-      <View style={[styles.statusDot, { backgroundColor: color }]} />
-
-      <Text style={[styles.controlValue, { color }]}>
+    <View style={styles.infoRow}>
+      <Text style={styles.infoValue}>
         {value}
       </Text>
 
-      <Text style={styles.controlTitle}>
-        {title}
+      <Text style={styles.infoLabel}>
+        {label}
       </Text>
-    </View>
-  )
-}
-
-function Chip({ label }: { label: string }) {
-  return (
-    <View style={styles.chip}>
-      <Text style={styles.chipText}>{label}</Text>
     </View>
   )
 }
@@ -133,55 +177,55 @@ function Chip({ label }: { label: string }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: '#030712',
   },
 
   content: {
     padding: 18,
     paddingTop: 58,
-    paddingBottom: 115,
+    paddingBottom: 110,
   },
 
-  glowBlue: {
+  glowCircle: {
     position: 'absolute',
-    width: 280,
-    height: 280,
+    width: 230,
+    height: 230,
     borderRadius: 999,
-    backgroundColor: 'rgba(34,211,238,0.10)',
-    top: -90,
-    right: -90,
+    backgroundColor: 'rgba(34,211,238,0.08)',
+    top: -80,
+    right: -80,
   },
 
-  glowGreen: {
+  glowCircleTwo: {
     position: 'absolute',
-    width: 220,
-    height: 220,
+    width: 240,
+    height: 240,
     borderRadius: 999,
-    backgroundColor: 'rgba(74,222,128,0.06)',
-    top: 330,
-    left: -80,
+    backgroundColor: 'rgba(74,222,128,0.05)',
+    top: 420,
+    left: -100,
   },
 
-  heroCard: {
-    backgroundColor: 'rgba(8,15,30,0.95)',
-    borderRadius: 30,
-    padding: 22,
+  headerCard: {
+    backgroundColor: 'rgba(11,18,32,0.92)',
+    borderRadius: 28,
+    padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.20)',
+    borderColor: 'rgba(34,211,238,0.14)',
     marginBottom: 18,
   },
 
   badge: {
     color: '#22D3EE',
     fontSize: 10,
-    letterSpacing: 4,
-    marginBottom: 14,
+    letterSpacing: 3,
+    marginBottom: 12,
     textAlign: 'right',
   },
 
   title: {
     color: '#FFFFFF',
-    fontSize: 38,
+    fontSize: 34,
     fontWeight: '900',
     textAlign: 'right',
   },
@@ -189,200 +233,183 @@ const styles = StyleSheet.create({
   subtitle: {
     color: '#94A3B8',
     fontSize: 13,
-    lineHeight: 25,
-    marginTop: 10,
-    textAlign: 'right',
-  },
-
-  statusGrid: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 20,
-  },
-
-  controlCard: {
-    width: '47%',
-    minHeight: 125,
-    backgroundColor: 'rgba(15,23,42,0.90)',
-    borderRadius: 26,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    justifyContent: 'space-between',
-  },
-
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    alignSelf: 'flex-end',
-  },
-
-  controlValue: {
-    fontSize: 26,
-    fontWeight: '900',
-    textAlign: 'right',
-  },
-
-  controlTitle: {
-    color: '#94A3B8',
-    fontSize: 14,
-    fontWeight: '700',
-    textAlign: 'right',
-  },
-
-  projectCard: {
-    backgroundColor: 'rgba(7,17,31,0.95)',
-    borderRadius: 30,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(96,165,250,0.14)',
-    marginBottom: 20,
-  },
-
-  projectBadge: {
-    color: '#60A5FA',
-    fontSize: 11,
-    letterSpacing: 4,
-    fontWeight: '900',
-    textAlign: 'right',
-  },
-
-  projectTitle: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '900',
-    marginTop: 16,
-    textAlign: 'right',
-  },
-
-  projectText: {
-    color: '#CBD5E1',
-    fontSize: 15,
-    marginTop: 10,
-    textAlign: 'right',
-  },
-
-  projectMeta: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    marginTop: 22,
-    gap: 12,
-  },
-
-  metaText: {
-    flex: 1,
-    color: '#94A3B8',
-    backgroundColor: 'rgba(15,23,42,0.85)',
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    fontSize: 12,
-    fontWeight: '800',
-    textAlign: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-
-  developerCard: {
-    backgroundColor: 'rgba(15,23,42,0.92)',
-    borderRadius: 30,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(74,222,128,0.12)',
-    marginBottom: 20,
-  },
-
-  sectionLabel: {
-    color: '#22D3EE',
-    fontSize: 13,
-    fontWeight: '900',
-    textAlign: 'right',
-    marginBottom: 14,
-  },
-
-  developerName: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '900',
-    textAlign: 'right',
-  },
-
-  developerRole: {
-    color: '#4ADE80',
-    fontSize: 15,
-    fontWeight: '900',
-    marginTop: 10,
-    textAlign: 'right',
-  },
-
-  developerInfo: {
-    color: '#94A3B8',
-    fontSize: 13,
-    marginTop: 10,
-    textAlign: 'right',
-  },
-
-  techCard: {
-    backgroundColor: 'rgba(15,23,42,0.92)',
-    borderRadius: 30,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.10)',
-    marginBottom: 20,
-  },
-
-  chips: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-
-  chip: {
-    backgroundColor: 'rgba(34,211,238,0.08)',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.12)',
-  },
-
-  chipText: {
-    color: '#CBD5E1',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-
-  infoBox: {
-    backgroundColor: 'rgba(3,7,18,0.92)',
-    borderRadius: 28,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    marginBottom: 40,
-  },
-
-  infoTitle: {
-    color: '#22D3EE',
-    fontSize: 20,
-    fontWeight: '900',
-    textAlign: 'right',
-  },
-
-  infoText: {
-    color: '#CBD5E1',
-    fontSize: 13,
-    lineHeight: 26,
+    lineHeight: 24,
     marginTop: 12,
     textAlign: 'right',
   },
 
-  apiText: {
+  infoCard: {
+    backgroundColor: 'rgba(15,23,42,0.88)',
+    borderRadius: 26,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.12)',
+    marginBottom: 14,
+  },
+
+  warningCard: {
+    backgroundColor: 'rgba(24,18,8,0.88)',
+    borderRadius: 26,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(251,146,60,0.18)',
+    marginBottom: 14,
+  },
+
+  cardHeaderRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 14,
+  },
+
+  iconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 18,
+    backgroundColor: 'rgba(34,211,238,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  iconText: {
+    color: '#22D3EE',
+    fontSize: 22,
+    fontWeight: '900',
+  },
+
+  warningIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 18,
+    backgroundColor: 'rgba(251,146,60,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,146,60,0.24)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  warningIconText: {
+    color: '#FB923C',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+
+  headerTextWrapper: {
+    flex: 1,
+  },
+
+  cardTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+
+  warningTitle: {
+    color: '#FB923C',
+    fontSize: 18,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+
+  cardDescription: {
+    color: '#CBD5E1',
+    fontSize: 13,
+    lineHeight: 24,
+    marginTop: 8,
+    textAlign: 'right',
+  },
+
+  webCard: {
+    backgroundColor: 'rgba(7,17,31,0.94)',
+    borderRadius: 30,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.20)',
+    marginTop: 4,
+    marginBottom: 18,
+  },
+
+  webTitle: {
+    color: '#22D3EE',
+    fontSize: 24,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+
+  webDescription: {
+    color: '#CBD5E1',
+    fontSize: 13,
+    lineHeight: 24,
+    marginTop: 10,
+    textAlign: 'right',
+  },
+
+  webButton: {
+    backgroundColor: '#22D3EE',
+    borderRadius: 20,
+    paddingVertical: 15,
+    marginTop: 18,
+    alignItems: 'center',
+  },
+
+  webButtonPressed: {
+    opacity: 0.75,
+  },
+
+  webButtonText: {
+    color: '#03111F',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+
+  webUrl: {
     color: '#64748B',
     fontSize: 11,
-    marginTop: 18,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+
+  systemCard: {
+    backgroundColor: 'rgba(15,23,42,0.88)',
+    borderRadius: 30,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+
+  sectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '900',
+    marginBottom: 16,
+    textAlign: 'right',
+  },
+
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+    paddingVertical: 13,
+    gap: 12,
+  },
+
+  infoLabel: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'right',
+  },
+
+  infoValue: {
+    color: '#CBD5E1',
+    fontSize: 13,
+    fontWeight: '800',
     textAlign: 'left',
+    flex: 1,
   },
 })

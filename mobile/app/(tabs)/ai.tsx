@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
   ActivityIndicator,
@@ -12,9 +12,7 @@ import {
   View,
 } from 'react-native'
 
-import axios from 'axios'
-
-const API_URL = 'http://192.168.8.219:5000'
+import { apiPost } from '@/utils/baseerahApi'
 
 type Message = {
   id: number
@@ -23,13 +21,15 @@ type Message = {
 }
 
 const suggestions = [
-  'حالة المرور',
-  'أعلى استهلاك طاقة',
-  'جودة الهواء',
-  'التنبيهات الحالية',
+  'ما حالة المرور الآن؟',
+  'ما أعلى منطقة في استهلاك الطاقة؟',
+  'حلل جودة الهواء في المناطق',
+  'اعرض التنبيهات الحالية',
 ]
 
 export default function AIScreen() {
+  const scrollRef = useRef<ScrollView | null>(null)
+
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -37,14 +37,20 @@ export default function AIScreen() {
     {
       id: 1,
       role: 'assistant',
-      text: 'مرحباً، أنا مساعد بصيرة الذكي. اسألني عن المرور، الطاقة، المياه، جودة الهواء أو التنبيهات الحالية.',
+      text: 'مرحباً، أنا مساعد بصيرة الذكي. أستطيع تحليل بيانات المدن، التنبيهات، المؤشرات التشغيلية، والتوصيات المحفوظة.',
     },
   ])
+
+  useEffect(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true })
+    }, 100)
+  }, [messages, loading])
 
   const askAI = async (customQuestion?: string) => {
     const finalQuestion = customQuestion || question
 
-    if (!finalQuestion.trim()) return
+    if (!finalQuestion.trim() || loading) return
 
     const userMessage: Message = {
       id: Date.now(),
@@ -58,14 +64,14 @@ export default function AIScreen() {
     try {
       setLoading(true)
 
-      const res = await axios.post(`${API_URL}/ai`, {
+      const data = await apiPost('/ai', {
         question: finalQuestion,
       })
 
       const assistantMessage: Message = {
         id: Date.now() + 1,
         role: 'assistant',
-        text: res.data.reply || 'لم أتمكن من تحليل البيانات حالياً.',
+        text: data?.reply || 'لم أتمكن من تحليل البيانات حالياً.',
       }
 
       setMessages((prev) => [...prev, assistantMessage])
@@ -77,12 +83,22 @@ export default function AIScreen() {
         {
           id: Date.now() + 2,
           role: 'assistant',
-          text: 'تعذر الاتصال بمحرك بصيرة الذكي حالياً.',
+          text: 'تعذر الاتصال بمحرك بصيرة الذكي حالياً. تأكد من الاتصال بالإنترنت ثم حاول مرة أخرى.',
         },
       ])
     } finally {
       setLoading(false)
     }
+  }
+
+  const clearChat = () => {
+    setMessages([
+      {
+        id: Date.now(),
+        role: 'assistant',
+        text: 'تم بدء محادثة جديدة. اسألني عن حالة المدينة أو التنبيهات أو التوصيات.',
+      },
+    ])
   }
 
   return (
@@ -93,23 +109,33 @@ export default function AIScreen() {
     >
       <View style={styles.wrapper}>
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.glowCircle} />
+          <View style={styles.glowCircleTwo} />
 
           <View style={styles.heroCard}>
-            <Text style={styles.badge}>
-              BASEERAH AI
-            </Text>
+            <View style={styles.heroTopRow}>
+              <View style={styles.aiIconBox}>
+                <Text style={styles.aiIconText}>AI</Text>
+              </View>
 
-            <Text style={styles.title}>
-              مساعد بصيرة الذكي
-            </Text>
+              <View style={styles.heroTextWrapper}>
+                <Text style={styles.badge}>
+                  BASEERAH AI COPILOT
+                </Text>
+
+                <Text style={styles.title}>
+                  مساعد بصيرة
+                </Text>
+              </View>
+            </View>
 
             <Text style={styles.subtitle}>
-              مساعد ذكي لتحليل المدن ومراقبة المؤشرات التشغيلية وتقديم التوصيات الفورية.
+              مساعد ذكي يقرأ بيانات المدن والتنبيهات والتوصيات المحفوظة ليقدم إجابات تشغيلية مختصرة.
             </Text>
 
             <View style={styles.statusRow}>
@@ -119,15 +145,36 @@ export default function AIScreen() {
               </View>
 
               <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>AI Copilot</Text>
+                <Text style={styles.statusText}>Render API</Text>
               </View>
             </View>
           </View>
 
-          <View style={styles.suggestionsCard}>
-            <Text style={styles.suggestionsTitle}>
-              اقتراحات سريعة
+          <View style={styles.contextCard}>
+            <Text style={styles.contextTitle}>
+              نطاق الإجابة
             </Text>
+
+            <Text style={styles.contextText}>
+              يعتمد المساعد على بيانات المدن، التنبيهات الحالية، وآخر توصيات الذكاء الاصطناعي المحفوظة في النظام.
+            </Text>
+          </View>
+
+          <View style={styles.suggestionsCard}>
+            <View style={styles.suggestionsHeader}>
+              <Text style={styles.suggestionsTitle}>
+                اقتراحات سريعة
+              </Text>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={clearChat}
+              >
+                <Text style={styles.clearText}>
+                  مسح المحادثة
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.suggestionsGrid}>
               {suggestions.map((item, index) => (
@@ -136,6 +183,7 @@ export default function AIScreen() {
                   style={styles.suggestionItem}
                   activeOpacity={0.8}
                   onPress={() => askAI(item)}
+                  disabled={loading}
                 >
                   <Text style={styles.suggestionText}>
                     {item}
@@ -189,7 +237,7 @@ export default function AIScreen() {
                   />
 
                   <Text style={styles.typingText}>
-                    بصيرة تكتب...
+                    بصيرة تحلل البيانات...
                   </Text>
                 </View>
               </View>
@@ -239,7 +287,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 18,
     paddingTop: 58,
-    paddingBottom: 40,
+    paddingBottom: 34,
   },
 
   glowCircle: {
@@ -252,26 +300,63 @@ const styles = StyleSheet.create({
     right: -70,
   },
 
+  glowCircleTwo: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 999,
+    backgroundColor: 'rgba(168,85,247,0.07)',
+    top: 420,
+    left: -90,
+  },
+
   heroCard: {
     backgroundColor: 'rgba(11,18,32,0.94)',
-    borderRadius: 28,
+    borderRadius: 30,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.16)',
-    marginBottom: 18,
+    borderColor: 'rgba(34,211,238,0.18)',
+    marginBottom: 14,
+  },
+
+  heroTopRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 14,
+  },
+
+  aiIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 22,
+    backgroundColor: 'rgba(34,211,238,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.24)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  aiIconText: {
+    color: '#22D3EE',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+
+  heroTextWrapper: {
+    flex: 1,
   },
 
   badge: {
     color: '#22D3EE',
     fontSize: 10,
-    letterSpacing: 4,
-    marginBottom: 12,
+    letterSpacing: 3,
+    marginBottom: 10,
     textAlign: 'right',
   },
 
   title: {
     color: '#FFFFFF',
-    fontSize: 36,
+    fontSize: 34,
     fontWeight: '900',
     textAlign: 'right',
   },
@@ -280,7 +365,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 13,
     lineHeight: 24,
-    marginTop: 10,
+    marginTop: 14,
     textAlign: 'right',
   },
 
@@ -315,13 +400,45 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
+  contextCard: {
+    backgroundColor: 'rgba(7,17,31,0.94)',
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(74,222,128,0.14)',
+    marginBottom: 14,
+  },
+
+  contextTitle: {
+    color: '#4ADE80',
+    fontSize: 16,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+
+  contextText: {
+    color: '#CBD5E1',
+    fontSize: 13,
+    lineHeight: 24,
+    marginTop: 8,
+    textAlign: 'right',
+  },
+
   suggestionsCard: {
     backgroundColor: 'rgba(15,23,42,0.88)',
-    borderRadius: 24,
+    borderRadius: 26,
     padding: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
     marginBottom: 18,
+  },
+
+  suggestionsHeader: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 14,
   },
 
   suggestionsTitle: {
@@ -329,7 +446,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
     textAlign: 'right',
-    marginBottom: 14,
+  },
+
+  clearText: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '800',
   },
 
   suggestionsGrid: {
@@ -374,7 +496,7 @@ const styles = StyleSheet.create({
   },
 
   messageBubble: {
-    maxWidth: '88%',
+    maxWidth: '90%',
     borderRadius: 24,
     padding: 16,
     borderWidth: 1,
