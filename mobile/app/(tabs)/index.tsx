@@ -218,9 +218,10 @@ export default function HomeScreen() {
       <View style={styles.glowCircleTwo} />
 
       <ImageBackground
-        source={require('@/assets/images/abha.jpg')}
-        style={styles.heroImage}
-        imageStyle={styles.heroImageStyle}
+       source={require('@/assets/images/abha.jpg')}
+       style={styles.heroImage}
+       imageStyle={styles.heroImageStyle}
+       resizeMode="cover"
       >
         <View style={styles.heroOverlay}>
           <Text style={styles.badge}>BASEERAH AI</Text>
@@ -449,10 +450,10 @@ const styles = StyleSheet.create({
   },
 
   heroOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(3,7,18,0.62)',
+   flex: 1,
+   backgroundColor: 'rgba(3,7,18,0.38)',
     padding: 24,
-    justifyContent: 'flex-end',
+   justifyContent: 'flex-end',
   },
 
   badge: {
@@ -464,19 +465,46 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: '#FFFFFF',
-    fontSize: 52,
-    fontWeight: '900',
-    textAlign: 'right',
+   color: '#FFFFFF',
+   fontSize: 52,
+   fontWeight: '900',
+   textAlign: 'right',
+   textShadowColor: 'rgba(0,0,0,0.65)',
+   textShadowOffset: {
+    width: 0,
+    height: 2,
+   },
+   textShadowRadius: 8,
   },
 
   subtitle: {
-    color: '#E2E8F0',
-    fontSize: 15,
-    lineHeight: 28,
-    marginTop: 12,
-    textAlign: 'right',
+  color: '#FFFFFF',
+  fontSize: 15,
+  lineHeight: 28,
+  marginTop: 12,
+  textAlign: 'right',
+
+  textShadowColor: 'rgba(0,0,0,0.85)',
+  textShadowOffset: {
+    width: 0,
+    height: 2,
   },
+  textShadowRadius: 8,
+},
+
+ssubtitle: {
+  color: '#E2E8F0',
+  fontSize: 15,
+  lineHeight: 28,
+  marginTop: 12,
+  textAlign: 'right',
+  textShadowColor: 'rgba(0,0,0,0.65)',
+  textShadowOffset: {
+    width: 0,
+    height: 1,
+  },
+  textShadowRadius: 6,
+},
 
   liveRow: {
     flexDirection: 'row-reverse',
